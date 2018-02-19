@@ -13,19 +13,13 @@ contract Marketplace {
     event SubscriptionExtended(bytes32 indexed productId, address indexed subscriber, uint endTimestamp);
     event SubscriptionTransferred(bytes32 indexed productId, address indexed from, address indexed to, uint secondsTransferred, uint datacoinTransferred);
 
-    // "plain" struct can be returned from functions
-    // alternatives: ProductData, mapping outside Product, manual struct decomposition + repetition
-    struct ProductData {
+    struct Product {
+        //bytes32 parentProductId;   // later, products could be arranged in trees containing sub-products
+        bytes32 id;        
         string name;
         address beneficiary;
         uint pricePerSecond;
         uint minimumSubscriptionSeconds;
-    }
-
-    struct Product {
-        //string parentProductId;   // later, products could be arranged in trees containing sub-products
-        bytes32 id;
-        ProductData data;
         mapping(address => TimeBasedSubscription) subscriptions;
     }
 
@@ -36,8 +30,13 @@ contract Marketplace {
     }
 
     mapping (bytes32 => Product) products;
-    function getProduct(bytes32 id) public view returns (ProductData product) {
-        return products[id].data;
+    function getProduct(bytes32 id) public view returns (string name, address beneficiary, uint pricePerSecond, uint minimumSubscriptionSeconds) {
+        return (
+            products[id].name,
+            products[id].beneficiary,
+            products[id].pricePerSecond,
+            products[id].minimumSubscriptionSeconds
+        );
     }
 
     //mapping (string => mapping(address => TimeBasedSubscription)) subscriptions;
@@ -61,7 +60,7 @@ contract Marketplace {
     // also checks that p exists at the same
     modifier onlyBeneficiary(bytes32 productId) {
         Product storage p = products[productId];        
-        require(p.data.beneficiary == msg.sender); //, "Only product beneficiary may call this function");
+        require(p.beneficiary == msg.sender); //, "Only product beneficiary may call this function");
         _;
     }
 
@@ -70,7 +69,7 @@ contract Marketplace {
         require(pricePerSecond > 0); //, "Free streams go through different channel");
         Product storage p = products[id];
         require(p.id == 0); //, "Product with this ID already exists");        
-        products[id] = Product(id, ProductData(name, beneficiary, pricePerSecond, minimumSubscriptionSeconds));
+        products[id] = Product(id, name, beneficiary, pricePerSecond, minimumSubscriptionSeconds);
         ProductCreated(id, name, beneficiary, pricePerSecond, minimumSubscriptionSeconds);
     }
 
@@ -81,15 +80,16 @@ contract Marketplace {
         // onlyBeneficiary check that the productId exists
         // TODO: check there are no active subscriptions?
         delete products[productId];
+        ProductDeleted(productId);
     }
 
     function updatePricing(bytes32 productId, uint pricePerSecond, uint minimumSubscriptionSeconds) public onlyBeneficiary(productId) {
         require(pricePerSecond > 0); //, "Free streams go through different channel");
         Product storage p = products[productId]; 
         require(p.id != 0); //, "Product doesn't exist");
-        p.data.pricePerSecond = pricePerSecond;
-        p.data.minimumSubscriptionSeconds = minimumSubscriptionSeconds;        
-        ProductUpdated(productId, p.data.name, p.data.beneficiary, pricePerSecond, minimumSubscriptionSeconds);
+        p.pricePerSecond = pricePerSecond;
+        p.minimumSubscriptionSeconds = minimumSubscriptionSeconds;        
+        ProductUpdated(productId, p.name, p.beneficiary, pricePerSecond, minimumSubscriptionSeconds);
     }
 
     /**
@@ -97,7 +97,7 @@ contract Marketplace {
     */
     function setBeneficiary(bytes32 productId, address newBeneficiary) public onlyBeneficiary(productId) {
         // that productId exists is already checked in onlyBeneficiary
-        products[productId].data.beneficiary = newBeneficiary;        
+        products[productId].beneficiary = newBeneficiary;        
     }
 
     /////////////// Subscription management ///////////////
@@ -112,8 +112,8 @@ contract Marketplace {
         require(subscriptionSeconds >= 1); //, "Must send ether for at least one second, see pricePerSecond of the product");
         _subscribe(product, sub, subscriptionSeconds);
 
-        uint price = product.data.pricePerSecond * subscriptionSeconds;
-        require(datacoin.transferFrom(msg.sender, product.data.beneficiary, price));  //, "Not enough DATAcoin allowance");
+        uint price = product.pricePerSecond * subscriptionSeconds;
+        require(datacoin.transferFrom(msg.sender, product.beneficiary, price));  //, "Not enough DATAcoin allowance");
     }
 
     /**
@@ -132,7 +132,7 @@ contract Marketplace {
         var (isValid, product, sub) = _getSubscription(productId, msg.sender);
         require(isValid);   //, "Only valid subscriptions can be transferred");
         uint secondsLeft = sub.endTimestamp - block.timestamp; // TODO: SafeMath
-        uint datacoinLeft = secondsLeft * product.data.pricePerSecond;
+        uint datacoinLeft = secondsLeft * product.pricePerSecond;
         TimeBasedSubscription storage newSub = product.subscriptions[newSubscriber];
         _subscribe(product, newSub, secondsLeft);
         delete product.subscriptions[msg.sender];
@@ -153,7 +153,7 @@ contract Marketplace {
             oldSub.endTimestamp = endTimestamp;  
             SubscriptionExtended(p.id, msg.sender, endTimestamp);
         } else {
-            require(addSeconds >= p.data.minimumSubscriptionSeconds); //, "More ether required to meet the minimum subscription period");
+            require(addSeconds >= p.minimumSubscriptionSeconds); //, "More ether required to meet the minimum subscription period");
             endTimestamp = block.timestamp + addSeconds;
             TimeBasedSubscription memory newSub = TimeBasedSubscription(endTimestamp);
             p.subscriptions[msg.sender] = newSub;
