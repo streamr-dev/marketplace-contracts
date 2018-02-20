@@ -8,10 +8,16 @@ contract Marketplace {
     event ProductCreated(bytes32 indexed id, string name, address beneficiary, uint pricePerSecond, uint minimumSubscriptionSeconds);
     event ProductUpdated(bytes32 indexed id, string name, address beneficiary, uint pricePerSecond, uint minimumSubscriptionSeconds);
     event ProductDeleted(bytes32 indexed id);
+    event ProductRedeployed(bytes32 indexed id);
     event Subscribed(bytes32 indexed productId, address indexed subscriber, uint endTimestamp);
     event NewSubscription(bytes32 indexed productId, address indexed subscriber, uint endTimestamp);
     event SubscriptionExtended(bytes32 indexed productId, address indexed subscriber, uint endTimestamp);
-    event SubscriptionTransferred(bytes32 indexed productId, address indexed from, address indexed to, uint secondsTransferred, uint datacoinTransferred);
+    event SubscriptionTransferred(bytes32 indexed productId, address indexed from, address indexed to, uint secondsTransferred, uint datacoinTransferred);    
+
+    enum ProductState {
+        NotDeployed,                // non-existent or deleted
+        Deployed                    // created or redeployed
+    }
 
     struct Product {
         //bytes32 parentProductId;   // later, products could be arranged in trees containing sub-products
@@ -20,6 +26,7 @@ contract Marketplace {
         address beneficiary;
         uint pricePerSecond;
         uint minimumSubscriptionSeconds;
+        ProductState state;
         mapping(address => TimeBasedSubscription) subscriptions;
     }
 
@@ -30,12 +37,13 @@ contract Marketplace {
     }
 
     mapping (bytes32 => Product) products;
-    function getProduct(bytes32 id) public view returns (string name, address beneficiary, uint pricePerSecond, uint minimumSubscriptionSeconds) {
+    function getProduct(bytes32 id) public view returns (string name, address beneficiary, uint pricePerSecond, uint minimumSubscriptionSeconds, ProductState state) {
         return (
             products[id].name,
             products[id].beneficiary,
             products[id].pricePerSecond,
-            products[id].minimumSubscriptionSeconds
+            products[id].minimumSubscriptionSeconds,
+            products[id].state
         );
     }
 
@@ -57,7 +65,7 @@ contract Marketplace {
 
     ////////////////// Product management /////////////////
 
-    // also checks that p exists at the same
+    // also checks that p exists: p.beneficiary == 0 for non-existent products
     modifier onlyBeneficiary(bytes32 productId) {
         Product storage p = products[productId];        
         require(p.beneficiary == msg.sender); //, "Only product beneficiary may call this function");
@@ -65,12 +73,12 @@ contract Marketplace {
     }
 
     // TODO: priceCurrency
-    function createProduct(bytes32 id, string name, address beneficiary, uint pricePerSecond, uint minimumSubscriptionSeconds) public {        
+    function createProduct(bytes32 id, string name, uint pricePerSecond, uint minimumSubscriptionSeconds) public {        
         require(pricePerSecond > 0); //, "Free streams go through different channel");
         Product storage p = products[id];
         require(p.id == 0); //, "Product with this ID already exists");        
-        products[id] = Product(id, name, beneficiary, pricePerSecond, minimumSubscriptionSeconds);
-        ProductCreated(id, name, beneficiary, pricePerSecond, minimumSubscriptionSeconds);
+        products[id] = Product(id, name, msg.sender, pricePerSecond, minimumSubscriptionSeconds, ProductState.Deployed);
+        ProductCreated(id, name, msg.sender, pricePerSecond, minimumSubscriptionSeconds);
     }
 
     /**
@@ -79,8 +87,18 @@ contract Marketplace {
     function deleteProduct(bytes32 productId) public onlyBeneficiary(productId) {
         // onlyBeneficiary check that the productId exists
         // TODO: check there are no active subscriptions?
-        delete products[productId];
+        products[productId].state = ProductState.NotDeployed;
         ProductDeleted(productId);
+    }
+
+    /**
+    * Return product to market
+    */
+    function redeployProduct(bytes32 productId) public onlyBeneficiary(productId) {
+        // onlyBeneficiary check that the productId exists
+        // TODO: check there are no active subscriptions?
+        products[productId].state = ProductState.Deployed;
+        ProductRedeployed(productId);
     }
 
     function updatePricing(bytes32 productId, uint pricePerSecond, uint minimumSubscriptionSeconds) public onlyBeneficiary(productId) {
@@ -109,6 +127,7 @@ contract Marketplace {
      // TODO: use DATAcoin
     function buy(bytes32 productId, uint subscriptionSeconds) public {
         var (, product, sub) = _getSubscription(productId, msg.sender);
+        require(product.state == ProductState.Deployed); //, "Product has been deleted");
         require(subscriptionSeconds >= 1); //, "Must send ether for at least one second, see pricePerSecond of the product");
         _subscribe(product, sub, subscriptionSeconds);
 
