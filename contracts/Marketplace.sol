@@ -124,11 +124,9 @@ contract Marketplace {
      * Purchases access to this stream for msg.sender.
      * If the address already has a valid subscription, extends the subscription by the given period.
      */
-     // TODO: use DATAcoin
     function buy(bytes32 productId, uint subscriptionSeconds) public {
         var (, product, sub) = _getSubscription(productId, msg.sender);
-        require(product.state == ProductState.Deployed); //, "Product has been deleted");
-        require(subscriptionSeconds >= 1); //, "Must send ether for at least one second, see pricePerSecond of the product");
+        require(product.state == ProductState.Deployed); //, "Product has been deleted");        
         _subscribe(product, sub, subscriptionSeconds);
 
         uint price = product.pricePerSecond * subscriptionSeconds;
@@ -168,6 +166,7 @@ contract Marketplace {
     function _subscribe(Product storage p, TimeBasedSubscription storage oldSub, uint addSeconds) internal {
         uint endTimestamp;
         if (oldSub.endTimestamp > block.timestamp) {
+            require(addSeconds > 0); //, "Must top up worth at least one second");
             endTimestamp = oldSub.endTimestamp + addSeconds;    // TODO: SafeMath
             oldSub.endTimestamp = endTimestamp;  
             SubscriptionExtended(p.id, msg.sender, endTimestamp);
