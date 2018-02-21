@@ -8,6 +8,8 @@ chai.should()
 const Marketplace = artifacts.require("./Marketplace.sol")
 const MintableToken = artifacts.require("zeppelin-solidity/contracts/token/ERC20/MintableToken.sol")
 
+// TODO: generally useful asserts, move in separate file ---->
+
 /**
  * Assert equality in web3 return value sense, modulo conversions to "normal" JS strings and numbers
  */
@@ -43,6 +45,8 @@ function assertEvent(truffleResponse, eventName, eventArgs) {
     }
 }
 
+// <----- end TODO
+
 contract("Marketplace", accounts => {
     let market, token
     before(async () => {
@@ -61,35 +65,20 @@ contract("Marketplace", accounts => {
                 beneficiary: accounts[0],
                 pricePerSecond: 1,
                 minimumSubscriptionSeconds: 1
-            })
-            const product = await market.getProduct("test")
-            assert.equal(product[0], "test")
-            assert.equal(product[1], accounts[0])
-            assert.equal(+product[2], 1)    // + converts BigNumber to JS number
-            assert.equal(+product[3], 1)
-            assert.equal(+product[4], 1)    // ProductState == Deployed
+            })            
+            assertEqual(await market.getProduct("test"), ["test", accounts[0], 1, 1, 1])    // ProductState == Deployed
         })
 
         it("deletes the previously created product", async () => {
             const res = await market.deleteProduct("test", {from: accounts[0]})
             assertEvent(res, "ProductDeleted")            
-            const product = await market.getProduct("test")
-            assert.equal(product[0], "test")
-            assert.equal(product[1], accounts[0])
-            assert.equal(+product[2], 1)
-            assert.equal(+product[3], 1)
-            assert.equal(+product[4], 0)    // ProductState == NotDeployed
+            assertEqual(await market.getProduct("test"), ["test", accounts[0], 1, 1, 0])    // ProductState == NotDeployed
         })
 
         it("redeploys the previously deleted product", async () => {
             const res = await market.redeployProduct("test", {from: accounts[0]})
             assertEvent(res, "ProductRedeployed")            
-            const product = await market.getProduct("test")
-            assert.equal(product[0], "test")
-            assert.equal(product[1], accounts[0])
-            assert.equal(+product[2], 1)
-            assert.equal(+product[3], 1)
-            assert.equal(+product[4], 1)    // ProductState == Deployed
+            assertEqual(await market.getProduct("test"), ["test", accounts[0], 1, 1, 1])
         })
 
         it("can only be done by beneficiary", async () => {
@@ -103,8 +92,7 @@ contract("Marketplace", accounts => {
                 from: accounts[0],
                 to: accounts[1]
             })
-            const product = await market.getProduct("test")
-            assert.equal(product[1], accounts[1])
+            assertEqual(await market.getProduct("test"), ["test", accounts[1], 1, 1, 1])
         })
     })
 
