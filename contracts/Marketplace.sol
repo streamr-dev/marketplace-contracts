@@ -9,6 +9,7 @@ contract Marketplace {
     event ProductUpdated(bytes32 indexed id, string name, address beneficiary, uint pricePerSecond, uint minimumSubscriptionSeconds);
     event ProductDeleted(bytes32 indexed id);
     event ProductRedeployed(bytes32 indexed id);
+    event ProductBeneficiaryChanged(bytes32 indexed id, address indexed from, address indexed to);
     event Subscribed(bytes32 indexed productId, address indexed subscriber, uint endTimestamp);
     event NewSubscription(bytes32 indexed productId, address indexed subscriber, uint endTimestamp);
     event SubscriptionExtended(bytes32 indexed productId, address indexed subscriber, uint endTimestamp);
@@ -47,7 +48,6 @@ contract Marketplace {
         );
     }
 
-    //mapping (string => mapping(address => TimeBasedSubscription)) subscriptions;
     function getSubscription(bytes32 productId, address subscriber) public view returns (TimeBasedSubscription subsciption) {
         var (, , sub) = _getSubscription(productId, subscriber);
         return sub;
@@ -114,8 +114,9 @@ contract Marketplace {
     * Transfers ownership of the product to a new beneficiary
     */
     function setBeneficiary(bytes32 productId, address newBeneficiary) public onlyBeneficiary(productId) {
-        // that productId exists is already checked in onlyBeneficiary
-        products[productId].beneficiary = newBeneficiary;        
+        // that productId exists is already checked in onlyBeneficiary        
+        ProductBeneficiaryChanged(productId, products[productId].beneficiary, newBeneficiary);
+        products[productId].beneficiary = newBeneficiary;
     }
 
     /////////////// Subscription management ///////////////
