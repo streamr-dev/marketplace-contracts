@@ -5,11 +5,12 @@ import "../node_modules/zeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 // TODO: is Ownable
 contract Marketplace {
 
-    event ProductCreated(bytes32 indexed id, string name, address beneficiary, uint pricePerSecond, uint minimumSubscriptionSeconds);
-    event ProductUpdated(bytes32 indexed id, string name, address beneficiary, uint pricePerSecond, uint minimumSubscriptionSeconds);
-    event ProductDeleted(bytes32 indexed id);
-    event ProductRedeployed(bytes32 indexed id);
-    event ProductBeneficiaryChanged(bytes32 indexed id, address indexed from, address indexed to);
+    event ProductCreated(address indexed owner, bytes32 indexed id, string name, address beneficiary, uint pricePerSecond, uint minimumSubscriptionSeconds);
+    event ProductUpdated(address indexed owner, bytes32 indexed id, string name, address beneficiary, uint pricePerSecond, uint minimumSubscriptionSeconds);
+    event ProductDeleted(address indexed owner, bytes32 indexed id);
+    event ProductRedeployed(address indexed owner, bytes32 indexed id);    
+    event ProductOwnershipOffered(address indexed owner, bytes32 indexed id, address indexed to);
+    event ProductOwnershipChanged(address indexed newOwner, bytes32 indexed id, address indexed oldOwner);
     event Subscribed(bytes32 indexed productId, address indexed subscriber, uint endTimestamp);
     event NewSubscription(bytes32 indexed productId, address indexed subscriber, uint endTimestamp);
     event SubscriptionExtended(bytes32 indexed productId, address indexed subscriber, uint endTimestamp);
@@ -22,13 +23,15 @@ contract Marketplace {
 
     struct Product {
         //bytes32 parentProductId;   // later, products could be arranged in trees containing sub-products
-        bytes32 id;        
+        bytes32 id;
         string name;
-        address beneficiary;
+        address owner;
+        address beneficiary;        // account where revenue is directed to
         uint pricePerSecond;
         uint minimumSubscriptionSeconds;
         ProductState state;
         mapping(address => TimeBasedSubscription) subscriptions;
+        address newOwnerCandidate;  // Two phase hand-over to minimize the chance that the product ownership is lost to a non-existent address.
     }
 
     struct TimeBasedSubscription {        
@@ -38,9 +41,10 @@ contract Marketplace {
     }
 
     mapping (bytes32 => Product) products;
-    function getProduct(bytes32 id) public view returns (string name, address beneficiary, uint pricePerSecond, uint minimumSubscriptionSeconds, ProductState state) {
+    function getProduct(bytes32 id) public view returns (string name, address owner, address beneficiary, uint pricePerSecond, uint minimumSubscriptionSeconds, ProductState state) {
         return (
             products[id].name,
+            products[id].owner,
             products[id].beneficiary,
             products[id].pricePerSecond,
             products[id].minimumSubscriptionSeconds,
@@ -65,58 +69,68 @@ contract Marketplace {
 
     ////////////////// Product management /////////////////
 
-    // also checks that p exists: p.beneficiary == 0 for non-existent products
-    modifier onlyBeneficiary(bytes32 productId) {
+    // also checks that p exists: p.owner == 0 for non-existent products
+    modifier onlyProductOwner(bytes32 productId) {
         Product storage p = products[productId];        
-        require(p.beneficiary == msg.sender); //, "Only product beneficiary may call this function");
+        require(p.owner == msg.sender); //, "Only product owner may call this function");
         _;
     }
 
     // TODO: priceCurrency
-    function createProduct(bytes32 id, string name, uint pricePerSecond, uint minimumSubscriptionSeconds) public {        
+    function createProduct(bytes32 id, string name, address beneficiary, uint pricePerSecond, uint minimumSubscriptionSeconds) public {        
         require(pricePerSecond > 0); //, "Free streams go through different channel");
         Product storage p = products[id];
         require(p.id == 0); //, "Product with this ID already exists");        
-        products[id] = Product(id, name, msg.sender, pricePerSecond, minimumSubscriptionSeconds, ProductState.Deployed);
-        ProductCreated(id, name, msg.sender, pricePerSecond, minimumSubscriptionSeconds);
+        products[id] = Product(id, name, msg.sender, beneficiary, pricePerSecond, minimumSubscriptionSeconds, ProductState.Deployed, 0);
+        ProductCreated(msg.sender, id, name, beneficiary, pricePerSecond, minimumSubscriptionSeconds);
     }
 
     /**
     * Stop offering the product
     */
-    function deleteProduct(bytes32 productId) public onlyBeneficiary(productId) {
-        // onlyBeneficiary check that the productId exists
-        // TODO: check there are no active subscriptions?
+    function deleteProduct(bytes32 productId) public onlyProductOwner(productId) {        
+        require(products[productId].state == ProductState.Deployed);
         products[productId].state = ProductState.NotDeployed;
-        ProductDeleted(productId);
+        ProductDeleted(products[productId].owner, productId);
     }
 
     /**
     * Return product to market
     */
-    function redeployProduct(bytes32 productId) public onlyBeneficiary(productId) {
-        // onlyBeneficiary check that the productId exists
-        // TODO: check there are no active subscriptions?
+    function redeployProduct(bytes32 productId) public onlyProductOwner(productId) {        
+        require(products[productId].state == ProductState.NotDeployed);
         products[productId].state = ProductState.Deployed;
-        ProductRedeployed(productId);
+        ProductRedeployed(products[productId].owner, productId);
     }
 
-    function updatePricing(bytes32 productId, uint pricePerSecond, uint minimumSubscriptionSeconds) public onlyBeneficiary(productId) {
+    function updateProduct(bytes32 productId, string name, address beneficiary, uint pricePerSecond, uint minimumSubscriptionSeconds) public onlyProductOwner(productId) {
         require(pricePerSecond > 0); //, "Free streams go through different channel");
         Product storage p = products[productId]; 
-        require(p.id != 0); //, "Product doesn't exist");
+        p.name = name;
+        p.beneficiary = beneficiary;
         p.pricePerSecond = pricePerSecond;
         p.minimumSubscriptionSeconds = minimumSubscriptionSeconds;        
-        ProductUpdated(productId, p.name, p.beneficiary, pricePerSecond, minimumSubscriptionSeconds);
+        ProductUpdated(p.owner, p.id, name, beneficiary, pricePerSecond, minimumSubscriptionSeconds);
     }
 
     /**
-    * Transfers ownership of the product to a new beneficiary
+    * Changes ownership of the product. Two phase hand-over minimizes the chance that the product ownership is lost to a non-existent address.
     */
-    function setBeneficiary(bytes32 productId, address newBeneficiary) public onlyBeneficiary(productId) {
-        // that productId exists is already checked in onlyBeneficiary        
-        ProductBeneficiaryChanged(productId, products[productId].beneficiary, newBeneficiary);
-        products[productId].beneficiary = newBeneficiary;
+    function offerProductOwnership(bytes32 productId, address newOwnerCandidate) public onlyProductOwner(productId) {
+        // that productId exists is already checked in onlyProductOwner
+        products[productId].newOwnerCandidate = newOwnerCandidate;
+        ProductOwnershipOffered(products[productId].owner, productId, newOwnerCandidate);
+    }
+
+    /**
+    * Changes ownership of the product. Two phase hand-over minimizes the chance that the product ownership is lost to a non-existent address.
+    */
+    function claimProductOwnership(bytes32 productId) public {
+        // also checks that productId exists
+        Product storage p = products[productId]; 
+        require(msg.sender == p.newOwnerCandidate);
+        ProductOwnershipChanged(msg.sender, productId, p.owner);
+        p.owner = msg.sender;
     }
 
     /////////////// Subscription management ///////////////
@@ -128,7 +142,7 @@ contract Marketplace {
     function buy(bytes32 productId, uint subscriptionSeconds) public {
         var (, product, sub) = _getSubscription(productId, msg.sender);
         require(product.state == ProductState.Deployed); //, "Product has been deleted");        
-        _subscribe(product, sub, subscriptionSeconds);
+        _addSubscription(product, msg.sender, subscriptionSeconds, sub);
 
         uint price = product.pricePerSecond * subscriptionSeconds;
         require(datacoin.transferFrom(msg.sender, product.beneficiary, price));  //, "Not enough DATAcoin allowance");
@@ -152,7 +166,7 @@ contract Marketplace {
         uint secondsLeft = sub.endTimestamp - block.timestamp; // TODO: SafeMath
         uint datacoinLeft = secondsLeft * product.pricePerSecond;
         TimeBasedSubscription storage newSub = product.subscriptions[newSubscriber];
-        _subscribe(product, newSub, secondsLeft);
+        _addSubscription(product, newSubscriber, secondsLeft, newSub);
         delete product.subscriptions[msg.sender];
         SubscriptionTransferred(productId, msg.sender, newSubscriber, secondsLeft, datacoinLeft);
     }
@@ -164,21 +178,21 @@ contract Marketplace {
         return (s.endTimestamp >= block.timestamp, p, s);
     }
     
-    function _subscribe(Product storage p, TimeBasedSubscription storage oldSub, uint addSeconds) internal {
+    function _addSubscription(Product storage p, address subscriber, uint addSeconds, TimeBasedSubscription storage oldSub) internal {
         uint endTimestamp;
         if (oldSub.endTimestamp > block.timestamp) {
             require(addSeconds > 0); //, "Must top up worth at least one second");
             endTimestamp = oldSub.endTimestamp + addSeconds;    // TODO: SafeMath
             oldSub.endTimestamp = endTimestamp;  
-            SubscriptionExtended(p.id, msg.sender, endTimestamp);
+            SubscriptionExtended(p.id, subscriber, endTimestamp);
         } else {
             require(addSeconds >= p.minimumSubscriptionSeconds); //, "More ether required to meet the minimum subscription period");
             endTimestamp = block.timestamp + addSeconds;
             TimeBasedSubscription memory newSub = TimeBasedSubscription(endTimestamp);
-            p.subscriptions[msg.sender] = newSub;
-            NewSubscription(p.id, msg.sender, endTimestamp);
+            p.subscriptions[subscriber] = newSub;
+            NewSubscription(p.id, subscriber, endTimestamp);
         }
-        Subscribed(p.id, msg.sender, endTimestamp);
+        Subscribed(p.id, subscriber, endTimestamp);
     }
 
     // TODO: transfer allowance to another Marketplace
