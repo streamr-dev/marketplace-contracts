@@ -52,12 +52,14 @@ contract Marketplace {
         );
     }
 
-    function getSubscription(bytes32 productId, address subscriber) public view returns (TimeBasedSubscription subsciption) {
-        var (, , sub) = _getSubscription(productId, subscriber);
-        return sub;
+    function getSubscription(bytes32 productId, address subscriber) public view returns (bool isValid, uint endTimestamp, uint secondsLeft) {        
+        var (v, , sub) = _getSubscription(productId, subscriber);
+        isValid = v;
+        endTimestamp = sub.endTimestamp;
+        secondsLeft = isValid ? sub.endTimestamp - block.timestamp : 0;
     }
 
-    function getSubscription(bytes32 productId) public view returns (TimeBasedSubscription subsciption) {
+    function getSubscription(bytes32 productId) public view returns (bool isValid, uint endTimestamp, uint secondsLeft) {
         return getSubscription(productId, msg.sender);
     }
 

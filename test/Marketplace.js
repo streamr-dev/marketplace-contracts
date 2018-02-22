@@ -162,9 +162,26 @@ contract("Marketplace", accounts => {
             })
             assert(await market.hasValidSubscription(productId, accounts[1]), {from: accounts[0]})
         })
+    })
 
-        // TODO: test extending subscription
+    describe("Subscription", () => {
+        const testToleranceSeconds = 5
 
-        // TODO: test transferSubscription
+        before(async () => {            
+            await market.createProduct("test_sub", "test", accounts[3], 1, 1, {from: accounts[0]})
+            await token.approve(market.address, 1000, {from: accounts[1]})
+            await market.buy("test_sub", 100, {from: accounts[1]})
+        })
+
+        it("can be extended", async () => {            
+            const [valid_before, endtime_before, remaining_before] = await market.getSubscription("test_sub", {from: accounts[1]})
+            assert(valid_before)
+            assert(remaining_before > 100 - testToleranceSeconds)
+            await market.buy("test_sub", 100, {from: accounts[1]})
+            const [valid_after, endtime_after, remaining_after] = await market.getSubscription("test_sub", {from: accounts[1]})
+            assert(valid_after)            
+            assert(endtime_after - endtime_before > 100 - testToleranceSeconds)
+            assert(remaining_after > 200 - testToleranceSeconds)
+        })
     })
 });
