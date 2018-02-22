@@ -131,6 +131,7 @@ contract Marketplace {
         require(msg.sender == p.newOwnerCandidate);
         ProductOwnershipChanged(msg.sender, productId, p.owner);
         p.owner = msg.sender;
+        p.newOwnerCandidate = 0;
     }
 
     /////////////// Subscription management ///////////////

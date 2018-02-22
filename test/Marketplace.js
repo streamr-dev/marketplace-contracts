@@ -3,6 +3,10 @@ const web3 = require("web3")
 const chai = require("chai")
 const chaiAsPromised = require("chai-as-promised")
 chai.use(chaiAsPromised)
+// TODO: get rid of this hipstering by writing your own assertThrows
+// TODO2: add more hipstering by adding a chai should-interface to eth calls: .should.sendEvent(s), .should.fail
+//    see http://chaijs.com/guide/helpers/
+//    see https://github.com/domenic/chai-as-promised/blob/master/lib/chai-as-promised.js
 chai.should()
 
 const Marketplace = artifacts.require("./Marketplace.sol")
@@ -16,7 +20,7 @@ const MintableToken = artifacts.require("zeppelin-solidity/contracts/token/ERC20
 function assertEqual(actual, expected) {
     // basic assert.equal comparison according to https://nodejs.org/api/assert.html#assert_assert_equal_actual_expected_message
     if (actual == expected) { return }
-    // also handle arrays
+    // also handle arrays for convenience
     if (Array.isArray(actual) && Array.isArray(expected)) {
         assert(actual.length === expected.length, "Arrays have different lengths, supplied wrong number of expected values!")
         actual.forEach((a, i) => assertEqual(a, expected[i]))
@@ -24,6 +28,7 @@ function assertEqual(actual, expected) {
     }
     // convert BigNumbers if expecting a number
     // NB: there's a reason BigNumbers are used! Keep your numbers small!
+    // if the number coming back from contract is big, then expect a BigNumber to avoid this conversion
     if (typeof expected === "number") {
         assert.equal(+actual, +expected)
         return
@@ -71,20 +76,26 @@ contract("Marketplace", accounts => {
             assertEqual(await market.getProduct("test"), ["test", accounts[0], accounts[0], 1, 1, 1])    // ProductState == Deployed
         })
 
+        it("can only be deleted/modified by owner", async () => {
+            market.deleteProduct("test", {from: accounts[1]}).should.be.rejectedWith("VM Exception while processing transaction: revert")
+            market.updateProduct("test", "lol", accounts[3], 2, 2, {from: accounts[1]}).should.be.rejectedWith("VM Exception while processing transaction: revert")
+            market.offerProductOwnership("test", accounts[1], {from: accounts[1]}).should.be.rejectedWith("VM Exception while processing transaction: revert")
+        })
+
         it("deletes the previously created product", async () => {
             const res = await market.deleteProduct("test", {from: accounts[0]})
             assertEvent(res, "ProductDeleted")            
             assertEqual(await market.getProduct("test"), ["test", accounts[0], accounts[0], 1, 1, 0])    // ProductState == NotDeployed
         })
 
+        it("can only be redeployed by owner", async () => {
+            market.redeployProduct("test", {from: accounts[1]}).should.be.rejectedWith("VM Exception while processing transaction: revert")
+        })
+
         it("redeploys the previously deleted product", async () => {
             const res = await market.redeployProduct("test", {from: accounts[0]})
             assertEvent(res, "ProductRedeployed")            
             assertEqual(await market.getProduct("test"), ["test", accounts[0], accounts[0], 1, 1, 1])
-        })
-
-        it("can only be deleted/modified by owner", async () => {
-            market.deleteProduct("test", {from: accounts[1]}).should.be.rejectedWith("VM Exception while processing transaction: revert")
         })
 
         it("product can be updated", async () => {
@@ -113,12 +124,17 @@ contract("Marketplace", accounts => {
             })
             assertEqual(await market.getProduct("test"), ["lol", accounts[1], accounts[3], 2, 2, 1])
         })
+
+        it("claiming fails if not designated as newOwnerCandidate", async () => {            
+            market.claimProductOwnership("test", {from: accounts[1]}).should.be.rejectedWith("VM Exception while processing transaction: revert")
+        })
     })
 
     describe("Buying products", () => {
-        let productId = "test"
-        beforeEach(async () => {            
-            productId += "x"
+        let productId
+        let testIndex = 0
+        beforeEach(async () => {
+            productId = "test_buy_" + testIndex++            
             await market.createProduct(productId, "test", accounts[3], 1, 1, {from: accounts[0]})
         })
 
