@@ -183,5 +183,19 @@ contract("Marketplace", accounts => {
             assert(endtime_after - endtime_before > 100 - testToleranceSeconds)
             assert(remaining_after > 200 - testToleranceSeconds)
         })
+
+        it("can be transferred", async () => {
+            const [valid1_before, endtime1_before, remaining1_before] = await market.getSubscription("test_sub", accounts[1])
+            const [valid2_before, endtime2_before, remaining2_before] = await market.getSubscription("test_sub", accounts[2])
+            await market.transferSubscription("test_sub", accounts[2], {from: accounts[1]})
+            const [valid1_after, endtime1_after, remaining1_after] = await market.getSubscription("test_sub", accounts[1])
+            const [valid2_after, endtime2_after, remaining2_after] = await market.getSubscription("test_sub", accounts[2])
+            assert(valid1_before)
+            assert(!valid2_before)
+            assert(!valid1_after)
+            assert(valid2_after)
+            assert(endtime2_after > endtime1_before - testToleranceSeconds)
+            assert(remaining2_after > remaining1_before - testToleranceSeconds)
+        })
     })
 });
