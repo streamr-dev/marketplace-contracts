@@ -6,6 +6,7 @@ import "./Marketplace.sol";
 contract Community is Ownable {
     event JoinRequested(Producer requester);
     event ProducerJoined(Producer newProducer);
+    event JoinRequestRejected(Producer requester);
 
     struct Producer {
         address addr;
@@ -20,8 +21,9 @@ contract Community is Ownable {
         market = marketPlace;
     }
 
+    // track earnings per product
+    mapping (bytes32 => uint) earnings;
 //    mapping (string => Producer[]) partialProducers;
-    mapping (string => uint) earnings;
 
     Producer[] public joinRequests;
     mapping (address => Producer) public producers;
@@ -35,18 +37,28 @@ contract Community is Ownable {
 
     function accept(uint index) public onlyOwner {
         Producer memory p = joinRequests[index];
+        require(p.addr != 0); //, "Join request has already been processed");
         producers[p.addr] = p;
+        delete joinRequests[index];
         ProducerJoined(p);
         // createProduct for this separate producer?
     }
 
-    function createProduct(string id, string name, uint pricePerSecond, uint minimumSubscriptionSeconds) internal {
-        market.createProduct(id, name, this, pricePerSecond, minimumSubscriptionSeconds);
+    function reject(uint index) public onlyOwner {
+        Producer memory p = joinRequests[index];
+        require(p.addr != 0); //, "Join request has already been processed");        
+        delete joinRequests[index];
+        JoinRequestRejected(p);
+    }
+
+    function createProduct(bytes32 id, string name, uint pricePerSecond, Marketplace.Currency currency, uint minimumSubscriptionSeconds) internal {
+        market.createProduct(id, name, this, pricePerSecond, currency, minimumSubscriptionSeconds);
     }
 
     // receive payment from Products
+    // TODO: implement notification in Marketplace.sol
     // TODO: but with DATAcoin
-    function receive(string productId) public {
-        
+    function receive(bytes32 productId, uint receivedTokens) public {
+        earnings[productId] += receivedTokens;  // TODO: SafeMath
     }
 }

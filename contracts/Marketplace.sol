@@ -2,23 +2,35 @@ pragma solidity ^0.4.0;
 
 import "../node_modules/zeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 
-// TODO: is Ownable
+//TODO: import "../node_modules/zeppelin-solidity/contracts/ownership/Ownable.sol";
+
 contract Marketplace {
 
-    event ProductCreated(address indexed owner, bytes32 indexed id, string name, address beneficiary, uint pricePerSecond, uint minimumSubscriptionSeconds);
-    event ProductUpdated(address indexed owner, bytes32 indexed id, string name, address beneficiary, uint pricePerSecond, uint minimumSubscriptionSeconds);
+    // product events
+    event ProductCreated(address indexed owner, bytes32 indexed id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds);
+    event ProductUpdated(address indexed owner, bytes32 indexed id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds);
     event ProductDeleted(address indexed owner, bytes32 indexed id);
     event ProductRedeployed(address indexed owner, bytes32 indexed id);    
     event ProductOwnershipOffered(address indexed owner, bytes32 indexed id, address indexed to);
     event ProductOwnershipChanged(address indexed newOwner, bytes32 indexed id, address indexed oldOwner);
+
+    // subscription events
     event Subscribed(bytes32 indexed productId, address indexed subscriber, uint endTimestamp);
     event NewSubscription(bytes32 indexed productId, address indexed subscriber, uint endTimestamp);
     event SubscriptionExtended(bytes32 indexed productId, address indexed subscriber, uint endTimestamp);
     event SubscriptionTransferred(bytes32 indexed productId, address indexed from, address indexed to, uint secondsTransferred, uint datacoinTransferred);    
 
+    // currency events
+    event ExchangeRatesUpdated(uint timestamp, uint dataInUsd);
+
     enum ProductState {
         NotDeployed,                // non-existent or deleted
         Deployed                    // created or redeployed
+    }
+
+    enum Currency {
+        DATA,
+        USD
     }
 
     struct Product {
@@ -28,6 +40,7 @@ contract Marketplace {
         address owner;
         address beneficiary;        // account where revenue is directed to
         uint pricePerSecond;
+        Currency priceCurrency;
         uint minimumSubscriptionSeconds;
         ProductState state;
         mapping(address => TimeBasedSubscription) subscriptions;
@@ -41,37 +54,41 @@ contract Marketplace {
     }
 
     mapping (bytes32 => Product) products;
-    function getProduct(bytes32 id) public view returns (string name, address owner, address beneficiary, uint pricePerSecond, uint minimumSubscriptionSeconds, ProductState state) {
+    function getProduct(bytes32 id) public view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state) {
         return (
             products[id].name,
             products[id].owner,
             products[id].beneficiary,
             products[id].pricePerSecond,
+            products[id].priceCurrency,
             products[id].minimumSubscriptionSeconds,
             products[id].state
         );
     }
 
-    function getSubscription(bytes32 productId, address subscriber) public view returns (bool isValid, uint endTimestamp, uint secondsLeft) {        
+    function getSubscription(bytes32 productId, address subscriber) public view returns (bool isValid, uint endTimestamp, uint secondsLeft) {
         var (v, , sub) = _getSubscription(productId, subscriber);
         isValid = v;
         endTimestamp = sub.endTimestamp;
         secondsLeft = isValid ? sub.endTimestamp - block.timestamp : 0;
     }
 
-    function getSubscription(bytes32 productId) public view returns (bool isValid, uint endTimestamp, uint secondsLeft) {
+    function getSubscriptionTo(bytes32 productId) public view returns (bool isValid, uint endTimestamp, uint secondsLeft) {
         return getSubscription(productId, msg.sender);
     }
 
     ERC20 datacoin;
 
-    function Marketplace(address datacoinAddress) public {
+    address public currencyUpdateAgent;
+
+    function Marketplace(address datacoinAddress, address currencyUpdateAgentAddress) public {        
+        currencyUpdateAgent = currencyUpdateAgentAddress;
         datacoin = ERC20(datacoinAddress);
     }
 
     ////////////////// Product management /////////////////
 
-    // also checks that p exists: p.owner == 0 for non-existent products
+    // also checks that p exists: p.owner == 0 for non-existent products    
     modifier onlyProductOwner(bytes32 productId) {
         Product storage p = products[productId];        
         require(p.owner == msg.sender); //, "Only product owner may call this function");
@@ -79,12 +96,12 @@ contract Marketplace {
     }
 
     // TODO: priceCurrency
-    function createProduct(bytes32 id, string name, address beneficiary, uint pricePerSecond, uint minimumSubscriptionSeconds) public {        
+    function createProduct(bytes32 id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds) public {
         require(pricePerSecond > 0); //, "Free streams go through different channel");
         Product storage p = products[id];
         require(p.id == 0); //, "Product with this ID already exists");        
-        products[id] = Product(id, name, msg.sender, beneficiary, pricePerSecond, minimumSubscriptionSeconds, ProductState.Deployed, 0);
-        ProductCreated(msg.sender, id, name, beneficiary, pricePerSecond, minimumSubscriptionSeconds);
+        products[id] = Product(id, name, msg.sender, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, ProductState.Deployed, 0);
+        ProductCreated(msg.sender, id, name, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds);
     }
 
     /**
@@ -105,14 +122,15 @@ contract Marketplace {
         ProductRedeployed(products[productId].owner, productId);
     }
 
-    function updateProduct(bytes32 productId, string name, address beneficiary, uint pricePerSecond, uint minimumSubscriptionSeconds) public onlyProductOwner(productId) {
+    function updateProduct(bytes32 productId, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds) public onlyProductOwner(productId) {
         require(pricePerSecond > 0); //, "Free streams go through different channel");
         Product storage p = products[productId]; 
         p.name = name;
         p.beneficiary = beneficiary;
         p.pricePerSecond = pricePerSecond;
+        p.priceCurrency = currency;
         p.minimumSubscriptionSeconds = minimumSubscriptionSeconds;        
-        ProductUpdated(p.owner, p.id, name, beneficiary, pricePerSecond, minimumSubscriptionSeconds);
+        ProductUpdated(p.owner, p.id, name, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds);
     }
 
     /**
@@ -147,7 +165,7 @@ contract Marketplace {
         require(product.state == ProductState.Deployed); //, "Product has been deleted");        
         _addSubscription(product, msg.sender, subscriptionSeconds, sub);
 
-        uint price = product.pricePerSecond * subscriptionSeconds;
+        uint price = _toDatacoin(product.pricePerSecond * subscriptionSeconds, product.priceCurrency);
         require(datacoin.transferFrom(msg.sender, product.beneficiary, price));  //, "Not enough DATAcoin allowance");
     }
 
@@ -198,5 +216,40 @@ contract Marketplace {
         Subscribed(p.id, subscriber, endTimestamp);
     }
 
-    // TODO: transfer allowance to another Marketplace
+    // TODO: transfer allowance to another Marketplace contract
+    // Mechanism basically is that this Marketplace draws from the allowance and credits
+    //   the account on another Marketplace; OR that there is a central credit pool (say, an ERC20 token)
+    // Creating another ERC20 token for this could be a simple fix: it would need the ability to transfer allowances
+
+    /////////////// Currency management ///////////////
+
+    uint public dataPerUsd = 1;
+
+    /**
+    * Update currency exchange rates; all purchases are still billed in DATAcoin
+    * @param timestamp in seconds when the exchange rates were last updated
+    * @param dataUsd how many data atoms (10^-18 DATA) equal one USD
+    */
+    function updateExchangeRates(uint timestamp, uint dataUsd) public {
+        require(msg.sender == currencyUpdateAgent);
+        require(dataUsd > 0);
+        dataPerUsd = dataUsd;
+        ExchangeRatesUpdated(timestamp, dataUsd);
+    }
+
+    /**
+    * Allow updating currency exchange rates even if time of exchange rate isn't known
+    */
+    function updateExchangeRates(uint dataUsd) public {
+        require(msg.sender == currencyUpdateAgent);
+        dataPerUsd = dataUsd;
+        ExchangeRatesUpdated(block.timestamp, dataUsd);
+    }    
+
+    function _toDatacoin(uint number, Currency unit) view internal returns (uint datacoinAmount) {
+        if (unit == Currency.DATA) {
+            return number;
+        }
+        return number * dataPerUsd;
+    }
 }

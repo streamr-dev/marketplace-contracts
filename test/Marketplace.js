@@ -12,6 +12,16 @@ chai.should()
 const Marketplace = artifacts.require("./Marketplace.sol")
 const MintableToken = artifacts.require("zeppelin-solidity/contracts/token/ERC20/MintableToken.sol")
 
+// TODO: where should enums be so they'd stay synced automagically?
+const ProductState = {
+    NotDeployed: 0,                // non-existent or deleted
+    Deployed: 1                    // created or redeployed
+}
+const Currency = {
+    DATA: 0,
+    USD: 1
+}
+
 // TODO: generally useful asserts, move in separate file ---->
 
 /**
@@ -58,22 +68,23 @@ contract("Marketplace", accounts => {
     before(async () => {
         token = await MintableToken.new({from: accounts[0]})        
         await Promise.all(accounts.map(acco => token.mint(acco, 1000000)))
-        market = await Marketplace.new(token.address, {from: accounts[0]})
+        market = await Marketplace.new(token.address, accounts[9], {from: accounts[0]})
     })
 
     // function getProduct(bytes32 id) public view returns (string name, address beneficiary, uint pricePerSecond, uint minimumSubscriptionSeconds, ProductState state)
     describe("Creating & deleting products", () => {
         it("creates a product with correct params", async () => {
-            const res = await market.createProduct("test", "test", accounts[0], 1, 1, {from: accounts[0]})            
+            const res = await market.createProduct("test", "test", accounts[0], 1, Currency.DATA, 1, {from: accounts[0]})
             assertEvent(res, "ProductCreated", {
                 owner: accounts[0],
                 id: "test",
                 name: "test",
                 beneficiary: accounts[0],
                 pricePerSecond: 1,
+                currency: Currency.DATA,
                 minimumSubscriptionSeconds: 1
             })            
-            assertEqual(await market.getProduct("test"), ["test", accounts[0], accounts[0], 1, 1, 1])    // ProductState == Deployed
+            assertEqual(await market.getProduct("test"), ["test", accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed])
         })
 
         it("can only be deleted/modified by owner", async () => {
@@ -85,7 +96,7 @@ contract("Marketplace", accounts => {
         it("deletes the previously created product", async () => {
             const res = await market.deleteProduct("test", {from: accounts[0]})
             assertEvent(res, "ProductDeleted")            
-            assertEqual(await market.getProduct("test"), ["test", accounts[0], accounts[0], 1, 1, 0])    // ProductState == NotDeployed
+            assertEqual(await market.getProduct("test"), ["test", accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.NotDeployed])
         })
 
         it("can only be redeployed by owner", async () => {
@@ -95,11 +106,11 @@ contract("Marketplace", accounts => {
         it("redeploys the previously deleted product", async () => {
             const res = await market.redeployProduct("test", {from: accounts[0]})
             assertEvent(res, "ProductRedeployed")            
-            assertEqual(await market.getProduct("test"), ["test", accounts[0], accounts[0], 1, 1, 1])
+            assertEqual(await market.getProduct("test"), ["test", accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed])
         })
 
         it("product can be updated", async () => {
-            const res = await market.updateProduct("test", "lol", accounts[3], 2, 2, {from: accounts[0]})
+            const res = await market.updateProduct("test", "lol", accounts[3], 2, Currency.USD, 2, {from: accounts[0]})
             assertEvent(res, "ProductUpdated", {
                 owner: accounts[0],
                 id: "test",
@@ -108,7 +119,7 @@ contract("Marketplace", accounts => {
                 pricePerSecond: 2,
                 minimumSubscriptionSeconds: 2
             })            
-            assertEqual(await market.getProduct("test"), ["lol", accounts[0], accounts[3], 2, 2, 1])    // ProductState == Deployed
+            assertEqual(await market.getProduct("test"), ["lol", accounts[0], accounts[3], 2, Currency.USD, 2, ProductState.Deployed])
         })
 
         it("ownership can be transferred", async () => {            
@@ -122,7 +133,7 @@ contract("Marketplace", accounts => {
                 id: "test",                
                 oldOwner: accounts[0]
             })
-            assertEqual(await market.getProduct("test"), ["lol", accounts[1], accounts[3], 2, 2, 1])
+            assertEqual(await market.getProduct("test"), ["lol", accounts[1], accounts[3], 2, Currency.USD, 2, ProductState.Deployed])
         })
 
         it("claiming fails if not designated as newOwnerCandidate", async () => {            
@@ -135,7 +146,7 @@ contract("Marketplace", accounts => {
         let testIndex = 0
         beforeEach(async () => {
             productId = "test_buy_" + testIndex++            
-            await market.createProduct(productId, "test", accounts[3], 1, 1, {from: accounts[0]})
+            await market.createProduct(productId, "test", accounts[3], 1, Currency.DATA, 1, {from: accounts[0]})
         })
 
         it("fails for bad arguments", () => {
@@ -168,17 +179,17 @@ contract("Marketplace", accounts => {
         const testToleranceSeconds = 5
 
         before(async () => {            
-            await market.createProduct("test_sub", "test", accounts[3], 1, 1, {from: accounts[0]})
+            await market.createProduct("test_sub", "test", accounts[3], 1, Currency.DATA, 1, {from: accounts[0]})
             await token.approve(market.address, 1000, {from: accounts[1]})
             await market.buy("test_sub", 100, {from: accounts[1]})
         })
 
         it("can be extended", async () => {            
-            const [valid_before, endtime_before, remaining_before] = await market.getSubscription("test_sub", {from: accounts[1]})
+            const [valid_before, endtime_before, remaining_before] = await market.getSubscriptionTo("test_sub", {from: accounts[1]})
             assert(valid_before)
             assert(remaining_before > 100 - testToleranceSeconds)
             await market.buy("test_sub", 100, {from: accounts[1]})
-            const [valid_after, endtime_after, remaining_after] = await market.getSubscription("test_sub", {from: accounts[1]})
+            const [valid_after, endtime_after, remaining_after] = await market.getSubscriptionTo("test_sub", {from: accounts[1]})
             assert(valid_after)            
             assert(endtime_after - endtime_before > 100 - testToleranceSeconds)
             assert(remaining_after > 200 - testToleranceSeconds)
