@@ -7,6 +7,11 @@
         {
             "type": "node",
             "request": "launch",
+            "name": "Truffle test",
+            "program": "/Users/jtakalai/.nvm/versions/node/v9.5.0/bin/truffle test"
+        }, {
+            "type": "node",
+            "request": "launch",
             "name": "Launch Program",
             "program": "${workspaceFolder}/scripts/start.js"
         }

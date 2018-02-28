@@ -54,21 +54,27 @@ function assertEqual(actual, expected) {
 
 function assertEvent(truffleResponse, eventName, eventArgs) {
     const log = truffleResponse.logs.find(log => log.event == eventName)
-    assert(log, `Event ${eventName} expected, not found`)
+    assert(log, `Event ${eventName} expected, got: ${truffleResponse.logs.map(log => log.event).join(", ")}`)
     for (arg in eventArgs) {
         assert(log.args.hasOwnProperty(arg), `Event ${eventName} doesn't have expected property "${arg}", try one of: ${Object.keys(log.args).join(", ")}`)
         assertEqual(log.args[arg], eventArgs[arg])
     }
 }
 
+// some kind of "now" (epoch) in seconds, valid-ish block.timestamp
+function now() {
+    return Number.parseInt(+new Date() / 1000)
+}
+
 // <----- end TODO
 
 contract("Marketplace", accounts => {
     let market, token
+    const currencyUpdateAgent = accounts[9]
     before(async () => {
         token = await MintableToken.new({from: accounts[0]})        
         await Promise.all(accounts.map(acco => token.mint(acco, 1000000)))
-        market = await Marketplace.new(token.address, accounts[9], {from: accounts[0]})
+        market = await Marketplace.new(token.address, currencyUpdateAgent, {from: accounts[0]})
     })
 
     // function getProduct(bytes32 id) public view returns (string name, address beneficiary, uint pricePerSecond, uint minimumSubscriptionSeconds, ProductState state)
@@ -88,19 +94,18 @@ contract("Marketplace", accounts => {
         })
 
         it("can only be deleted/modified by owner", async () => {
-            market.deleteProduct("test", {from: accounts[1]}).should.be.rejectedWith("VM Exception while processing transaction: revert")
-            market.updateProduct("test", "lol", accounts[3], 2, 2, {from: accounts[1]}).should.be.rejectedWith("VM Exception while processing transaction: revert")
-            market.offerProductOwnership("test", accounts[1], {from: accounts[1]}).should.be.rejectedWith("VM Exception while processing transaction: revert")
+            market.deleteProduct("test", {from: accounts[1]}).should.be.rejected//With("VM Exception while processing transaction: revert")
+            market.updateProduct("test", "lol", accounts[3], 2, 2, {from: accounts[1]}).should.be.rejected//With("VM Exception while processing transaction: revert")
+            market.offerProductOwnership("test", accounts[1], {from: accounts[1]}).should.be.rejected//With("VM Exception while processing transaction: revert")
         })
 
-        it("deletes the previously created product", async () => {
-            const res = await market.deleteProduct("test", {from: accounts[0]})
-            assertEvent(res, "ProductDeleted")            
+        it("deletes the previously created product", async () => {            
+            assertEvent(await market.deleteProduct("test", {from: accounts[0]}), "ProductDeleted")
             assertEqual(await market.getProduct("test"), ["test", accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.NotDeployed])
         })
 
         it("can only be redeployed by owner", async () => {
-            market.redeployProduct("test", {from: accounts[1]}).should.be.rejectedWith("VM Exception while processing transaction: revert")
+            market.redeployProduct("test", {from: accounts[1]}).should.be.rejected//With("VM Exception while processing transaction: revert")
         })
 
         it("redeploys the previously deleted product", async () => {
@@ -109,7 +114,7 @@ contract("Marketplace", accounts => {
             assertEqual(await market.getProduct("test"), ["test", accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed])
         })
 
-        it("product can be updated", async () => {
+        it("allows product be updated", async () => {
             const res = await market.updateProduct("test", "lol", accounts[3], 2, Currency.USD, 2, {from: accounts[0]})
             assertEvent(res, "ProductUpdated", {
                 owner: accounts[0],
@@ -122,7 +127,7 @@ contract("Marketplace", accounts => {
             assertEqual(await market.getProduct("test"), ["lol", accounts[0], accounts[3], 2, Currency.USD, 2, ProductState.Deployed])
         })
 
-        it("ownership can be transferred", async () => {            
+        it("allows ownership be transferred", async () => {            
             assertEvent(await market.offerProductOwnership("test", accounts[1], {from: accounts[0]}), "ProductOwnershipOffered", {
                 owner: accounts[0],
                 id: "test",                
@@ -137,7 +142,7 @@ contract("Marketplace", accounts => {
         })
 
         it("claiming fails if not designated as newOwnerCandidate", async () => {            
-            market.claimProductOwnership("test", {from: accounts[1]}).should.be.rejectedWith("VM Exception while processing transaction: revert")
+            market.claimProductOwnership("test", {from: accounts[1]}).should.be.rejected//With("VM Exception while processing transaction: revert")
         })
     })
 
@@ -150,18 +155,18 @@ contract("Marketplace", accounts => {
         })
 
         it("fails for bad arguments", () => {
-            market.buy(productId, 0, {from: accounts[0]}).should.be.rejectedWith("VM Exception while processing transaction: revert")
-            market.buy(productId, 0, {from: accounts[1]}).should.be.rejectedWith("VM Exception while processing transaction: revert")
+            market.buy(productId, 0, {from: accounts[0]}).should.be.rejected//With("VM Exception while processing transaction: revert")
+            market.buy(productId, 0, {from: accounts[1]}).should.be.rejected//With("VM Exception while processing transaction: revert")
         })
 
         it("fails if allowance not given", () => {
-            market.buy(productId, 100, {from: accounts[0]}).should.be.rejectedWith("VM Exception while processing transaction: revert")
-            market.buy(productId, 100, {from: accounts[1]}).should.be.rejectedWith("VM Exception while processing transaction: revert")
+            market.buy(productId, 100, {from: accounts[0]}).should.be.rejected//With("VM Exception while processing transaction: revert")
+            market.buy(productId, 100, {from: accounts[1]}).should.be.rejected//With("VM Exception while processing transaction: revert")
         })
 
         it("fails if too little allowance was given", async () => {
             await token.approve(market.address, 10, {from: accounts[1]})            
-            market.buy(productId, 100, {from: accounts[1]}).should.be.rejectedWith("VM Exception while processing transaction: revert")
+            market.buy(productId, 100, {from: accounts[1]}).should.be.rejected//With("VM Exception while processing transaction: revert")
         })        
 
         it("works if enough allowance was given", async () => {
@@ -207,6 +212,25 @@ contract("Marketplace", accounts => {
             assert(valid2_after)
             assert(endtime2_after > endtime1_before - testToleranceSeconds)
             assert(remaining2_after > remaining1_before - testToleranceSeconds)
+        })
+    })
+
+    describe("Currency exchange rates", () => {
+        before(async () => {            
+            await market.createProduct("test_currencies", "test", accounts[3], 1, Currency.USD, 1, {from: accounts[0]})
+        })
+
+        it("can not be set by non-currencyUpdateAgent", () => {
+            market.updateExchangeRates(now(), 100, {from: accounts[0]}).should.be.rejected//With("VM Exception while processing transaction: revert")
+        })
+
+        it("determine product price", async () => {            
+            await token.approve(market.address, 1000, {from: accounts[1]})
+            await market.updateExchangeRates(now(), 10, {from: currencyUpdateAgent})
+            market.buy("test_currencies", 200, {from: accounts[1]}).should.be.rejected//With("VM Exception while processing transaction: revert")
+            await market.updateExchangeRates(now(), 3, {from: currencyUpdateAgent})
+            assertEvent(await market.buy("test_currencies", 200, {from: accounts[1]}), "Subscribed")
+            assert.equal(await token.allowance(accounts[1], market.address), 1000 - 200 * 3)
         })
     })
 });
