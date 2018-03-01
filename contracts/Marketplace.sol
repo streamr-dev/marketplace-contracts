@@ -9,8 +9,8 @@ contract Marketplace {
     // product events
     event ProductCreated(address indexed owner, bytes32 indexed id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds);
     event ProductUpdated(address indexed owner, bytes32 indexed id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds);
-    event ProductDeleted(address indexed owner, bytes32 indexed id);
-    event ProductRedeployed(address indexed owner, bytes32 indexed id);    
+    event ProductDeleted(address indexed owner, bytes32 indexed id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds);
+    event ProductRedeployed(address indexed owner, bytes32 indexed id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds);
     event ProductOwnershipOffered(address indexed owner, bytes32 indexed id, address indexed to);
     event ProductOwnershipChanged(address indexed newOwner, bytes32 indexed id, address indexed oldOwner);
 
@@ -108,18 +108,20 @@ contract Marketplace {
     * Stop offering the product
     */
     function deleteProduct(bytes32 productId) public onlyProductOwner(productId) {        
-        require(products[productId].state == ProductState.Deployed);
-        products[productId].state = ProductState.NotDeployed;
-        ProductDeleted(products[productId].owner, productId);
+        Product storage p = products[productId];
+        require(p.state == ProductState.Deployed);
+        p.state = ProductState.NotDeployed;
+        ProductDeleted(p.owner, productId, p.name, p.beneficiary, p.pricePerSecond, p.priceCurrency, p.minimumSubscriptionSeconds);
     }
 
     /**
     * Return product to market
     */
     function redeployProduct(bytes32 productId) public onlyProductOwner(productId) {        
-        require(products[productId].state == ProductState.NotDeployed);
-        products[productId].state = ProductState.Deployed;
-        ProductRedeployed(products[productId].owner, productId);
+        Product storage p = products[productId];
+        require(p.state == ProductState.NotDeployed);
+        p.state = ProductState.Deployed;
+        ProductRedeployed(p.owner, productId, p.name, p.beneficiary, p.pricePerSecond, p.priceCurrency, p.minimumSubscriptionSeconds);
     }
 
     function updateProduct(bytes32 productId, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds) public onlyProductOwner(productId) {
