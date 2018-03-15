@@ -88,6 +88,10 @@ contract("Marketplace", accounts => {
             assertEqual(await market.getProduct("test"), ["test", accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed])
         })
 
+        it("will not accept empty product ID", async () => {
+            await assertFails(market.createProduct("", "test", accounts[0], 1, Currency.DATA, 1, {from: accounts[1]}))
+        })
+
         it("can only be deleted/modified by owner", async () => {
             await assertFails(market.deleteProduct("test", {from: accounts[1]}))
             await assertFails(market.updateProduct("test", "lol", accounts[3], 2, 2, {from: accounts[1]}))

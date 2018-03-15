@@ -97,6 +97,7 @@ contract Marketplace {
 
     // TODO: priceCurrency
     function createProduct(bytes32 id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds) public {
+        require(id != 0); //, "Product ID can't be empty/null");
         require(pricePerSecond > 0); //, "Free streams go through different channel");
         Product storage p = products[id];
         require(p.id == 0); //, "Product with this ID already exists");        
