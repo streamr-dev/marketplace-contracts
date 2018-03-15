@@ -1,14 +1,5 @@
 const web3 = require("web3")
 
-const chai = require("chai")
-const chaiAsPromised = require("chai-as-promised")
-chai.use(chaiAsPromised)
-// TODO: get rid of this hipstering by writing your own assertThrows
-// TODO2: add more hipstering by adding a chai should-interface to eth calls: .should.sendEvent(s), .should.fail
-//    see http://chaijs.com/guide/helpers/
-//    see https://github.com/domenic/chai-as-promised/blob/master/lib/chai-as-promised.js
-chai.should()
-
 const Marketplace = artifacts.require("./Marketplace.sol")
 const MintableToken = artifacts.require("zeppelin-solidity/contracts/token/ERC20/MintableToken.sol")
 
@@ -53,6 +44,18 @@ function assertEvent(truffleResponse, eventName, eventArgs) {
     }
 }
 
+async function assertFails(promise) {
+    let failed = false
+    try {
+        await promise
+    } catch (e) {
+        failed = true
+    }
+    if (!failed) {
+        throw new Error("Expected call to fail")
+    }
+}
+
 // some kind of "now" (epoch) in seconds, valid-ish block.timestamp
 function now() {
     return Number.parseInt(+new Date() / 1000)
@@ -86,9 +89,9 @@ contract("Marketplace", accounts => {
         })
 
         it("can only be deleted/modified by owner", async () => {
-            market.deleteProduct("test", {from: accounts[1]}).should.be.rejected//With("VM Exception while processing transaction: revert")
-            market.updateProduct("test", "lol", accounts[3], 2, 2, {from: accounts[1]}).should.be.rejected//With("VM Exception while processing transaction: revert")
-            market.offerProductOwnership("test", accounts[1], {from: accounts[1]}).should.be.rejected//With("VM Exception while processing transaction: revert")
+            await assertFails(market.deleteProduct("test", {from: accounts[1]}))
+            await assertFails(market.updateProduct("test", "lol", accounts[3], 2, 2, {from: accounts[1]}))
+            await assertFails(market.offerProductOwnership("test", accounts[1], {from: accounts[1]}))
         })
 
         it("deletes the previously created product", async () => {            
@@ -97,7 +100,7 @@ contract("Marketplace", accounts => {
         })
 
         it("can only be redeployed by owner", async () => {
-            market.redeployProduct("test", {from: accounts[1]}).should.be.rejected//With("VM Exception while processing transaction: revert")
+            await assertFails(market.redeployProduct("test", {from: accounts[1]}))
         })
 
         it("redeploys the previously deleted product", async () => {
@@ -134,7 +137,7 @@ contract("Marketplace", accounts => {
         })
 
         it("claiming fails if not designated as newOwnerCandidate", async () => {            
-            market.claimProductOwnership("test", {from: accounts[1]}).should.be.rejected//With("VM Exception while processing transaction: revert")
+            await assertFails(market.claimProductOwnership("test", {from: accounts[1]}))
         })
     })
 
@@ -146,19 +149,19 @@ contract("Marketplace", accounts => {
             await market.createProduct(productId, "test", accounts[3], 1, Currency.DATA, 1, {from: accounts[0]})
         })
 
-        it("fails for bad arguments", () => {
-            market.buy(productId, 0, {from: accounts[0]}).should.be.rejected//With("VM Exception while processing transaction: revert")
-            market.buy(productId, 0, {from: accounts[1]}).should.be.rejected//With("VM Exception while processing transaction: revert")
+        it("fails for bad arguments", async () => {
+            await assertFails(market.buy(productId, 0, {from: accounts[0]}))
+            await assertFails(market.buy(productId, 0, {from: accounts[1]}))
         })
 
-        it("fails if allowance not given", () => {
-            market.buy(productId, 100, {from: accounts[0]}).should.be.rejected//With("VM Exception while processing transaction: revert")
-            market.buy(productId, 100, {from: accounts[1]}).should.be.rejected//With("VM Exception while processing transaction: revert")
+        it("fails if allowance not given", async () => {
+            await assertFails(market.buy(productId, 100, {from: accounts[0]}))
+            await assertFails(market.buy(productId, 100, {from: accounts[1]}))
         })
 
         it("fails if too little allowance was given", async () => {
             await token.approve(market.address, 10, {from: accounts[1]})            
-            market.buy(productId, 100, {from: accounts[1]}).should.be.rejected//With("VM Exception while processing transaction: revert")
+            await assertFails(market.buy(productId, 100, {from: accounts[1]}))
         })        
 
         it("works if enough allowance was given", async () => {
@@ -212,14 +215,14 @@ contract("Marketplace", accounts => {
             await market.createProduct("test_currencies", "test", accounts[3], 1, Currency.USD, 1, {from: accounts[0]})
         })
 
-        it("can not be set by non-currencyUpdateAgent", () => {
-            market.updateExchangeRates(now(), 100, {from: accounts[0]}).should.be.rejected//With("VM Exception while processing transaction: revert")
+        it("can not be set by non-currencyUpdateAgent", async () => {
+            await assertFails(market.updateExchangeRates(now(), 100, {from: accounts[0]}))
         })
 
         it("determine product price", async () => {            
             await token.approve(market.address, 1000, {from: accounts[1]})
             await market.updateExchangeRates(now(), 10, {from: currencyUpdateAgent})
-            market.buy("test_currencies", 200, {from: accounts[1]}).should.be.rejected//With("VM Exception while processing transaction: revert")
+            await assertFails(market.buy("test_currencies", 200, {from: accounts[1]}))
             await market.updateExchangeRates(now(), 3, {from: currencyUpdateAgent})
             assertEvent(await market.buy("test_currencies", 200, {from: accounts[1]}), "Subscribed")
             assert.equal(await token.allowance(accounts[1], market.address), 1000 - 200 * 3)
