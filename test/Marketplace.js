@@ -15,7 +15,7 @@ function assertEqual(actual, expected) {
     if (actual == expected) { return }
     // also handle arrays for convenience
     if (Array.isArray(actual) && Array.isArray(expected)) {
-        assert(actual.length === expected.length, "Arrays have different lengths, supplied wrong number of expected values!")
+        assert.equal(actual.length, expected.length, "Arrays have different lengths, supplied wrong number of expected values!")
         actual.forEach((a, i) => assertEqual(a, expected[i]))
         return
     }
