@@ -10,5 +10,9 @@ const Currency = {
 
 module.exports = {
     ProductState,
-    Currency
+    Currency,
+
+    // inverses
+    currencySymbol: Object.getOwnPropertyNames(Currency),
+    productStateName: Object.getOwnPropertyNames(ProductState)
 }
