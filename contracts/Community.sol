@@ -17,7 +17,7 @@ contract Community is Ownable {
 
     Marketplace public market;
 
-    function Community(Marketplace marketPlace) public {
+    function Community(Marketplace marketPlace) Ownable() public {        
         market = marketPlace;
     }
 

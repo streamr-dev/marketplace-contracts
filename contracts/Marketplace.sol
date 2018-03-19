@@ -4,6 +4,8 @@ import "../node_modules/zeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 
 //TODO: import "../node_modules/zeppelin-solidity/contracts/ownership/Ownable.sol";
 
+// TODO: SafeMath
+// TODO: upgrade to newest solidity (emit etc.)
 contract Marketplace {
 
     // product events
