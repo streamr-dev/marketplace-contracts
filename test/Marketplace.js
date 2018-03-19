@@ -1,4 +1,7 @@
-const web3 = require("web3")
+const until = require('async-wait-until')
+
+const Web3 = require("web3")
+const web3 = new Web3()
 
 const Marketplace = artifacts.require("./Marketplace.sol")
 const MintableToken = artifacts.require("zeppelin-solidity/contracts/token/ERC20/MintableToken.sol")
@@ -28,7 +31,7 @@ function assertEqual(actual, expected) {
     }
     // convert hex bytes to string
     if (typeof expected === "string" && !isNaN(+actual)) {
-        assert.equal(web3.utils.hexToString(actual), expected)
+        assert.equal(web3.toUtf8(actual), expected)
         return
     }
     // fail now with nice error if didn't hit the filters
@@ -70,6 +73,33 @@ contract("Marketplace", accounts => {
         token = await MintableToken.new({from: accounts[0]})        
         await Promise.all(accounts.map(acco => token.mint(acco, 1000000)))
         market = await Marketplace.new(token.address, currencyUpdateAgent, {from: accounts[0]})
+    })
+
+    it("can createProduct and buy also outside Truffle", async () => {
+        const web3 = new Web3(market.constructor.currentProvider)
+
+        const productId = "test-e2e"
+        const productIdHex = web3.fromUtf8(productId)
+        const productIdBytes = productIdHex.slice(2).padEnd(64, "0")
+
+        const verbose = true
+
+        const MarketplaceJson = require("../build/contracts/Marketplace.json")
+        const TokenJson = require("../build/contracts/MintableToken.json")
+        const Marketplace = web3.eth.contract(MarketplaceJson.abi)
+        const Token = web3.eth.contract(TokenJson.abi)
+
+        const token = await Token.new({from: accounts[0], data: TokenJson.bytecode, gas:4000000})
+        await until(() => token.address)
+        await Promise.all(accounts.map(acco => token.mint(acco, 1000000, {from: accounts[0], gas:4000000})))
+        const marketplace = await Marketplace.new(token.address, currencyUpdateAgent, {from: accounts[0], data: MarketplaceJson.bytecode, gas:4000000})
+        await until(() => marketplace.address)
+
+        let res
+        res = await marketplace.createProduct(productIdHex, "End-to-end tester", accounts[3], 1, Currency.DATA, 1, {from: accounts[0], gas:4000000})
+        res = await token.mint(accounts[1], 100000, {from: accounts[0], gas:4000000})
+        res = await token.approve(marketplace.address, 10000, {from: accounts[1], gas:4000000})
+        res = await marketplace.buy(productIdHex, 100, {from: accounts[1], gas:4000000})
     })
 
     // function getProduct(bytes32 id) public view returns (string name, address beneficiary, uint pricePerSecond, uint minimumSubscriptionSeconds, ProductState state)
