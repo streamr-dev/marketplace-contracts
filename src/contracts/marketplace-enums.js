@@ -4,8 +4,8 @@ const ProductState = {
     Deployed: 1                    // created or redeployed
 }
 const Currency = {
-    DATA: 0,
-    USD: 1
+    DATA: 0,                       // data atoms or "wei" (10^-18 DATA)
+    USD: 1                         // nanodollars (10^-9 USD)
 }
 
 module.exports = {
