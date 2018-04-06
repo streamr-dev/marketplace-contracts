@@ -253,6 +253,12 @@ contract("Marketplace", accounts => {
             await assertFails(market.updateExchangeRates(now(), 100, {from: accounts[0]}))
         })
 
+        it("reports the correct rate", async () => {
+            assert.equal(await market.dataPerUsd(), 1)
+            await market.updateExchangeRates(now(), 3, {from: currencyUpdateAgent})
+            assert.equal(await market.dataPerUsd(), 3)
+        })
+
         it("determine product price", async () => {            
             await token.approve(market.address, 1000, {from: accounts[1]})
             await market.updateExchangeRates(now(), 10, {from: currencyUpdateAgent})
