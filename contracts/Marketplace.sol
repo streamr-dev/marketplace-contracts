@@ -1,12 +1,12 @@
 pragma solidity ^0.4.0;
 
 import "../node_modules/zeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "../node_modules/zeppelin-solidity/contracts/math/SafeMath.sol";
 
-//TODO: import "../node_modules/zeppelin-solidity/contracts/ownership/Ownable.sol";
-
-// TODO: SafeMath
-// TODO: upgrade to newest solidity (emit etc.)
+// TODO: Add require reasons as soon as Solidity 0.4.22 is out (now commented out)
+//   follow progress at https://github.com/ethereum/solidity/projects/6
 contract Marketplace {
+    using SafeMath for uint256;
 
     // product events
     event ProductCreated(address indexed owner, bytes32 indexed id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds);
@@ -31,12 +31,11 @@ contract Marketplace {
     }
 
     enum Currency {
-        DATA,
-        USD
+        DATA,                       // data atoms or "wei" (10^-18 DATA)
+        USD                         // nanodollars (10^-9 USD)
     }
 
     struct Product {
-        //bytes32 parentProductId;   // later, products could be arranged in trees containing sub-products
         bytes32 id;
         string name;
         address owner;
@@ -50,8 +49,6 @@ contract Marketplace {
     }
 
     struct TimeBasedSubscription {        
-        //string productId;         // from mapping key
-        //address buyer;            // from mapping key
         uint endTimestamp;
     }
 
@@ -68,14 +65,13 @@ contract Marketplace {
         );
     }
 
-    function getSubscription(bytes32 productId, address subscriber) public view returns (bool isValid, uint endTimestamp, uint secondsLeft) {
-        var (v, , sub) = _getSubscription(productId, subscriber);
-        isValid = v;
-        endTimestamp = sub.endTimestamp;
-        secondsLeft = isValid ? sub.endTimestamp - block.timestamp : 0;
+    function getSubscription(bytes32 productId, address subscriber) public view returns (bool isValid, uint endTimestamp) {
+        TimeBasedSubscription storage sub;
+        (isValid, , sub) = _getSubscription(productId, subscriber);
+        endTimestamp = sub.endTimestamp;        
     }
 
-    function getSubscriptionTo(bytes32 productId) public view returns (bool isValid, uint endTimestamp, uint secondsLeft) {
+    function getSubscriptionTo(bytes32 productId) public view returns (bool isValid, uint endTimestamp) {
         return getSubscription(productId, msg.sender);
     }
 
@@ -97,14 +93,13 @@ contract Marketplace {
         _;
     }
 
-    // TODO: priceCurrency
     function createProduct(bytes32 id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds) public {
         require(id != 0); //, "Product ID can't be empty/null");
         require(pricePerSecond > 0); //, "Free streams go through different channel");
         Product storage p = products[id];
         require(p.id == 0); //, "Product with this ID already exists");        
         products[id] = Product(id, name, msg.sender, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, ProductState.Deployed, 0);
-        ProductCreated(msg.sender, id, name, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds);
+        emit ProductCreated(msg.sender, id, name, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds);
     }
 
     /**
@@ -114,7 +109,7 @@ contract Marketplace {
         Product storage p = products[productId];
         require(p.state == ProductState.Deployed);
         p.state = ProductState.NotDeployed;
-        ProductDeleted(p.owner, productId, p.name, p.beneficiary, p.pricePerSecond, p.priceCurrency, p.minimumSubscriptionSeconds);
+        emit ProductDeleted(p.owner, productId, p.name, p.beneficiary, p.pricePerSecond, p.priceCurrency, p.minimumSubscriptionSeconds);
     }
 
     /**
@@ -124,7 +119,7 @@ contract Marketplace {
         Product storage p = products[productId];
         require(p.state == ProductState.NotDeployed);
         p.state = ProductState.Deployed;
-        ProductRedeployed(p.owner, productId, p.name, p.beneficiary, p.pricePerSecond, p.priceCurrency, p.minimumSubscriptionSeconds);
+        emit ProductRedeployed(p.owner, productId, p.name, p.beneficiary, p.pricePerSecond, p.priceCurrency, p.minimumSubscriptionSeconds);
     }
 
     function updateProduct(bytes32 productId, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds) public onlyProductOwner(productId) {
@@ -135,7 +130,7 @@ contract Marketplace {
         p.pricePerSecond = pricePerSecond;
         p.priceCurrency = currency;
         p.minimumSubscriptionSeconds = minimumSubscriptionSeconds;        
-        ProductUpdated(p.owner, p.id, name, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds);
+        emit ProductUpdated(p.owner, p.id, name, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds);
     }
 
     /**
@@ -144,17 +139,17 @@ contract Marketplace {
     function offerProductOwnership(bytes32 productId, address newOwnerCandidate) public onlyProductOwner(productId) {
         // that productId exists is already checked in onlyProductOwner
         products[productId].newOwnerCandidate = newOwnerCandidate;
-        ProductOwnershipOffered(products[productId].owner, productId, newOwnerCandidate);
+        emit ProductOwnershipOffered(products[productId].owner, productId, newOwnerCandidate);
     }
 
     /**
     * Changes ownership of the product. Two phase hand-over minimizes the chance that the product ownership is lost to a non-existent address.
     */
     function claimProductOwnership(bytes32 productId) public {
-        // also checks that productId exists
+        // also checks that productId exists (newOwnerCandidate is zero for non-existent)
         Product storage p = products[productId]; 
         require(msg.sender == p.newOwnerCandidate);
-        ProductOwnershipChanged(msg.sender, productId, p.owner);
+        emit ProductOwnershipChanged(msg.sender, productId, p.owner);
         p.owner = msg.sender;
         p.newOwnerCandidate = 0;
     }
@@ -166,20 +161,21 @@ contract Marketplace {
      * If the address already has a valid subscription, extends the subscription by the given period.
      */
     function buy(bytes32 productId, uint subscriptionSeconds) public {
-        var (, product, sub) = _getSubscription(productId, msg.sender);
+        Product storage product;
+        TimeBasedSubscription storage sub;
+        (, product, sub) = _getSubscription(productId, msg.sender);
         require(product.state == ProductState.Deployed); //, "Product has been deleted");        
         _addSubscription(product, msg.sender, subscriptionSeconds, sub);
 
-        uint price = _toDatacoin(product.pricePerSecond * subscriptionSeconds, product.priceCurrency);
+        uint price = _toDatacoin(product.pricePerSecond.mul(subscriptionSeconds), product.priceCurrency);
         require(datacoin.transferFrom(msg.sender, product.beneficiary, price));  //, "Not enough DATAcoin allowance");
     }
 
     /**
     * Checks if the given address currently has a valid subscription
     */
-    function hasValidSubscription(bytes32 productId, address subscriber) public constant returns (bool) {
-        var (isValid, , ) = _getSubscription(productId, subscriber);
-        return isValid;
+    function hasValidSubscription(bytes32 productId, address subscriber) public constant returns (bool isValid) {
+        (isValid, ,) = _getSubscription(productId, subscriber);
     }
 
     /**
@@ -187,14 +183,17 @@ contract Marketplace {
     * If the address already has a valid subscription, extends the subscription by the msg.sender's remaining period.
     */
     function transferSubscription(bytes32 productId, address newSubscriber) public {
-        var (isValid, product, sub) = _getSubscription(productId, msg.sender);
+        bool isValid = false;
+        Product storage product;
+        TimeBasedSubscription storage sub;
+        (isValid, product, sub) = _getSubscription(productId, msg.sender);
         require(isValid);   //, "Only valid subscriptions can be transferred");
-        uint secondsLeft = sub.endTimestamp - block.timestamp; // TODO: SafeMath
-        uint datacoinLeft = secondsLeft * product.pricePerSecond;
+        uint secondsLeft = sub.endTimestamp.sub(block.timestamp);
+        uint datacoinLeft = secondsLeft.mul(product.pricePerSecond);
         TimeBasedSubscription storage newSub = product.subscriptions[newSubscriber];
         _addSubscription(product, newSubscriber, secondsLeft, newSub);
         delete product.subscriptions[msg.sender];
-        SubscriptionTransferred(productId, msg.sender, newSubscriber, secondsLeft, datacoinLeft);
+        emit SubscriptionTransferred(productId, msg.sender, newSubscriber, secondsLeft, datacoinLeft);
     }
 
     function _getSubscription(bytes32 productId, address subscriber) internal constant returns (bool subIsValid, Product storage, TimeBasedSubscription storage) {
@@ -208,17 +207,17 @@ contract Marketplace {
         uint endTimestamp;
         if (oldSub.endTimestamp > block.timestamp) {
             require(addSeconds > 0); //, "Must top up worth at least one second");
-            endTimestamp = oldSub.endTimestamp + addSeconds;    // TODO: SafeMath
+            endTimestamp = oldSub.endTimestamp.add(addSeconds);
             oldSub.endTimestamp = endTimestamp;  
-            SubscriptionExtended(p.id, subscriber, endTimestamp);
+            emit SubscriptionExtended(p.id, subscriber, endTimestamp);
         } else {
             require(addSeconds >= p.minimumSubscriptionSeconds); //, "More ether required to meet the minimum subscription period");
-            endTimestamp = block.timestamp + addSeconds;
+            endTimestamp = block.timestamp.add(addSeconds);
             TimeBasedSubscription memory newSub = TimeBasedSubscription(endTimestamp);
             p.subscriptions[subscriber] = newSub;
-            NewSubscription(p.id, subscriber, endTimestamp);
+            emit NewSubscription(p.id, subscriber, endTimestamp);
         }
-        Subscribed(p.id, subscriber, endTimestamp);
+        emit Subscribed(p.id, subscriber, endTimestamp);
     }
 
     // TODO: transfer allowance to another Marketplace contract
@@ -239,7 +238,7 @@ contract Marketplace {
         require(msg.sender == currencyUpdateAgent);
         require(dataUsd > 0);
         dataPerUsd = dataUsd;
-        ExchangeRatesUpdated(timestamp, dataUsd);
+        emit ExchangeRatesUpdated(timestamp, dataUsd);
     }
 
     /**
@@ -248,13 +247,13 @@ contract Marketplace {
     function updateExchangeRates(uint dataUsd) public {
         require(msg.sender == currencyUpdateAgent);
         dataPerUsd = dataUsd;
-        ExchangeRatesUpdated(block.timestamp, dataUsd);
+        emit ExchangeRatesUpdated(block.timestamp, dataUsd);
     }    
 
     function _toDatacoin(uint number, Currency unit) view internal returns (uint datacoinAmount) {
         if (unit == Currency.DATA) {
             return number;
         }
-        return number * dataPerUsd;
+        return number.mul(dataPerUsd);
     }
 }
