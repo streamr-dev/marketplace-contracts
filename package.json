@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "Smart contracts for Streamr Marketplace",
   "scripts": {
-    "build": "node_modules/truffle/build/cli.bundled.js migrate",
-    "test": "node_modules/truffle/build/cli.bundled.js test"
+    "build": "truffle migrate",
+    "test": "truffle test"
   },
   "author": "",
   "license": "ISC",
