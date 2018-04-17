@@ -69,10 +69,11 @@ function now() {
 contract("Marketplace", accounts => {
     let market, token
     const currencyUpdateAgent = accounts[9]
+    const admin = accounts[8]
     before(async () => {
         token = await MintableToken.new({from: accounts[0]})        
         await Promise.all(accounts.map(acco => token.mint(acco, 1000000)))
-        market = await Marketplace.new(token.address, currencyUpdateAgent, {from: accounts[0]})
+        market = await Marketplace.new(token.address, currencyUpdateAgent, {from: admin})
     })
 
     it("can createProduct and buy also outside Truffle", async () => {
@@ -264,5 +265,25 @@ contract("Marketplace", accounts => {
             assertEvent(await market.buy("test_currencies", 200, {from: accounts[1]}), "Subscribed")
             assert.equal(await token.allowance(accounts[1], market.address), 1000 - 200 * 3)
         })
+    })
+
+    describe("Admin functionality", () => {
+        it("can halt product creation and buying except for the owner", async () => {
+            await market.createProduct("test_admin_halt", "test", accounts[3], 1, Currency.USD, 1, {from: accounts[0]})
+            await token.approve(market.address, 1000, {from: accounts[2]})
+            await token.approve(market.address, 1000, {from: admin})
+            await market.buy("test_admin_halt", 100, {from: accounts[2]})
+            await market.halt({from: admin})
+            await assertFails(market.createProduct("test_admin_halt2", "test", accounts[3], 1, Currency.USD, 1, {from: accounts[0]}))
+            await assertFails(market.buy("test_admin_halt", 100, {from: accounts[2]}))
+            await assertFails(market.transferSubscription("test_admin_halt", accounts[1], {from: accounts[2]}))
+            await market.createProduct("test_admin_halt3", "test", accounts[3], 1, Currency.USD, 1, {from: admin})
+            await market.buy("test_admin_halt", 100, {from: admin})
+            await market.resume({from: admin})
+            await market.createProduct("test_admin_halt4", "test", accounts[3], 1, Currency.USD, 1, {from: accounts[0]})
+            await market.buy("test_admin_halt4", 100, {from: accounts[2]})
+        })
+
+        //TODO: it("can halt subscription and product ownership transfers", async () => {
     })
 });

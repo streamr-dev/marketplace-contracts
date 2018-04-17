@@ -2,10 +2,11 @@ pragma solidity ^0.4.0;
 
 import "../node_modules/zeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "../node_modules/zeppelin-solidity/contracts/math/SafeMath.sol";
+import "../node_modules/zeppelin-solidity/contracts/ownership/Ownable.sol";
 
 // TODO: Add require reasons as soon as Solidity 0.4.22 is out (now commented out)
 //   follow progress at https://github.com/ethereum/solidity/projects/6
-contract Marketplace {
+contract Marketplace is Ownable {
     using SafeMath for uint256;
 
     // product events
@@ -79,7 +80,11 @@ contract Marketplace {
 
     address public currencyUpdateAgent;
 
-    function Marketplace(address datacoinAddress, address currencyUpdateAgentAddress) public {        
+    function Marketplace(address datacoinAddress, address currencyUpdateAgentAddress) Ownable() public {        
+        _initialize(datacoinAddress, currencyUpdateAgentAddress);
+    }
+
+    function _initialize(address datacoinAddress, address currencyUpdateAgentAddress) internal {
         currencyUpdateAgent = currencyUpdateAgentAddress;
         datacoin = ERC20(datacoinAddress);
     }
@@ -88,12 +93,12 @@ contract Marketplace {
 
     // also checks that p exists: p.owner == 0 for non-existent products    
     modifier onlyProductOwner(bytes32 productId) {
-        Product storage p = products[productId];        
-        require(p.owner == msg.sender); //, "Only product owner may call this function");
+        Product storage p = products[productId];
+        require(p.owner == msg.sender || owner == msg.sender); //, "Only product owner may call this function");
         _;
     }
 
-    function createProduct(bytes32 id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds) public {
+    function createProduct(bytes32 id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds) public whenNotHalted {
         require(id != 0); //, "Product ID can't be empty/null");
         require(pricePerSecond > 0); //, "Free streams go through different channel");
         Product storage p = products[id];
@@ -145,7 +150,7 @@ contract Marketplace {
     /**
     * Changes ownership of the product. Two phase hand-over minimizes the chance that the product ownership is lost to a non-existent address.
     */
-    function claimProductOwnership(bytes32 productId) public {
+    function claimProductOwnership(bytes32 productId) public whenNotHalted {
         // also checks that productId exists (newOwnerCandidate is zero for non-existent)
         Product storage p = products[productId]; 
         require(msg.sender == p.newOwnerCandidate);
@@ -160,7 +165,7 @@ contract Marketplace {
      * Purchases access to this stream for msg.sender.
      * If the address already has a valid subscription, extends the subscription by the given period.
      */
-    function buy(bytes32 productId, uint subscriptionSeconds) public {
+    function buy(bytes32 productId, uint subscriptionSeconds) public whenNotHalted {
         Product storage product;
         TimeBasedSubscription storage sub;
         (, product, sub) = _getSubscription(productId, msg.sender);
@@ -182,7 +187,7 @@ contract Marketplace {
     * Transfer a valid subscription from msg.sender to a new address.
     * If the address already has a valid subscription, extends the subscription by the msg.sender's remaining period.
     */
-    function transferSubscription(bytes32 productId, address newSubscriber) public {
+    function transferSubscription(bytes32 productId, address newSubscriber) public whenNotHalted {
         bool isValid = false;
         Product storage product;
         TimeBasedSubscription storage sub;
@@ -232,7 +237,7 @@ contract Marketplace {
     /**
     * Update currency exchange rates; all purchases are still billed in DATAcoin
     * @param timestamp in seconds when the exchange rates were last updated
-    * @param dataUsd how many data atoms (10^-18 DATA) equal one USD
+    * @param dataUsd how many data atoms (10^-18 DATA) equal one nanodollar (10^-9 USD)
     */
     function updateExchangeRates(uint timestamp, uint dataUsd) public {
         require(msg.sender == currencyUpdateAgent);
@@ -255,5 +260,28 @@ contract Marketplace {
             return number;
         }
         return number.mul(dataPerUsd);
+    }
+
+    /////////////// Admin functionality ///////////////
+    
+    event Halted();
+    event Resumed();
+    bool public halted = false;
+
+    modifier whenNotHalted() {
+        require(!halted || owner == msg.sender);
+        _;
+    }
+    function halt() public onlyOwner {
+        halted = true;
+        emit Halted();
+    }
+    function resume() public onlyOwner {
+        halted = false;
+        emit Resumed();
+    }
+
+    function reInitialize(address datacoinAddress, address currencyUpdateAgentAddress) public onlyOwner {
+        _initialize(datacoinAddress, currencyUpdateAgentAddress);
     }
 }
