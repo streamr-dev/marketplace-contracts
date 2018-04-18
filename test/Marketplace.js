@@ -267,23 +267,82 @@ contract("Marketplace", accounts => {
         })
     })
 
-    describe("Admin functionality", () => {
+    describe("Admin powers", () => {
+        it("can't be invoked by non-admins", async () => {
+            await assertFails(market.halt({from: accounts[0]}))
+            await assertFails(market.resume({from: currencyUpdateAgent}))
+            await assertFails(market.reInitialize(token.address, accounts[3], {from: accounts[2]}))
+        })
+
         it("can halt product creation and buying except for the owner", async () => {
             await market.createProduct("test_admin_halt", "test", accounts[3], 1, Currency.USD, 1, {from: accounts[0]})
             await token.approve(market.address, 1000, {from: accounts[2]})
             await token.approve(market.address, 1000, {from: admin})
             await market.buy("test_admin_halt", 100, {from: accounts[2]})
+
             await market.halt({from: admin})
             await assertFails(market.createProduct("test_admin_halt2", "test", accounts[3], 1, Currency.USD, 1, {from: accounts[0]}))
             await assertFails(market.buy("test_admin_halt", 100, {from: accounts[2]}))
             await assertFails(market.transferSubscription("test_admin_halt", accounts[1], {from: accounts[2]}))
             await market.createProduct("test_admin_halt3", "test", accounts[3], 1, Currency.USD, 1, {from: admin})
             await market.buy("test_admin_halt", 100, {from: admin})
+
             await market.resume({from: admin})
             await market.createProduct("test_admin_halt4", "test", accounts[3], 1, Currency.USD, 1, {from: accounts[0]})
             await market.buy("test_admin_halt4", 100, {from: accounts[2]})
         })
 
-        //TODO: it("can halt subscription and product ownership transfers", async () => {
+        it("can halt subscription and product ownership transfers", async () => {
+            await market.createProduct("test_admin_halt_transfer", "test", accounts[3], 1, Currency.USD, 1, {from: accounts[0]})
+            await market.offerProductOwnership("test_admin_halt_transfer", accounts[1], {from: accounts[0]})
+            await market.claimProductOwnership("test_admin_halt_transfer", {from: accounts[1]})
+            await token.approve(market.address, 1000, {from: accounts[2]})
+            await token.approve(market.address, 1000, {from: admin})
+            await market.buy("test_admin_halt_transfer", 100, {from: accounts[2]})
+            await market.transferSubscription("test_admin_halt_transfer", accounts[3], {from: accounts[2]})
+
+            await market.halt({from: admin})
+            await market.offerProductOwnership("test_admin_halt_transfer", accounts[0], {from: accounts[1]})
+            await assertFails(market.claimProductOwnership("test_admin_halt_transfer", {from: accounts[0]}))
+            await assertFails(market.transferSubscription("test_admin_halt_transfer", accounts[2], {from: accounts[3]}))
+
+            await market.resume({from: admin})            
+            await market.claimProductOwnership("test_admin_halt_transfer", {from: accounts[0]})
+            await market.transferSubscription("test_admin_halt_transfer", accounts[2], {from: accounts[3]})
+        })
+
+        it("can re-initialize the contract", async () => {
+            await market.updateExchangeRates(now(), 3, {from: currencyUpdateAgent})
+            await market.reInitialize(token.address, accounts[5], {from: admin})
+            await assertFails(market.updateExchangeRates(now(), 5, {from: currencyUpdateAgent}))
+            await market.updateExchangeRates(now(), 5, {from: accounts[5]})
+            await market.reInitialize(token.address, currencyUpdateAgent, {from: admin})
+            await market.updateExchangeRates(now(), 7, {from: currencyUpdateAgent})
+        })
+
+        it("can control all products", async () => {
+            await market.createProduct("test_admin_control", "test", accounts[3], 1, Currency.USD, 1, {from: accounts[0]})
+            await assertFails(market.deleteProduct("test_admin_control", {from: currencyUpdateAgent}))
+            await market.deleteProduct("test_admin_control", {from: admin})
+            await assertFails(market.redeployProduct("test_admin_control", {from: accounts[5]}))
+            await market.redeployProduct("test_admin_control", {from: admin})
+            await assertFails(market.updateProduct("test_admin_control", "lol", accounts[3], 2, Currency.DATA, 2, {from: accounts[1]}))
+            await market.updateProduct("test_admin_control", "lol", accounts[3], 2, Currency.DATA, 2, {from: admin})
+            await assertFails(market.offerProductOwnership("test_admin_control", accounts[1], {from: accounts[1]}))
+            await market.offerProductOwnership("test_admin_control", admin, {from: admin})
+        })
+
+        it("can be transferred", async () => {
+            await assertFails(market.halt({from: accounts[0]}))
+            market.transferOwnership(accounts[0], {from: admin})
+            await market.halt({from: accounts[0]})
+            await assertFails(market.createProduct("test_admin_transfer", "test", accounts[3], 1, Currency.USD, 1, {from: accounts[1]}))
+            await assertFails(market.createProduct("test_admin_transfer", "test", accounts[3], 1, Currency.USD, 1, {from: admin}))
+            await market.createProduct("test_admin_transfer", "test", accounts[3], 1, Currency.USD, 1, {from: accounts[0]})
+            market.transferOwnership(admin, {from: accounts[0]})
+            await assertFails(market.resume({from: accounts[0]}))
+            await market.resume({from: admin})
+            await market.createProduct("test_admin_transfer2", "test", accounts[3], 1, Currency.USD, 1, {from: accounts[1]})
+        })
     })
 });
