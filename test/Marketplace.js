@@ -125,7 +125,7 @@ contract("Marketplace", accounts => {
 
         it("can only be deleted/modified by owner", async () => {
             await assertFails(market.deleteProduct("test", {from: accounts[1]}))
-            await assertFails(market.updateProduct("test", "lol", accounts[3], 2, 2, {from: accounts[1]}))
+            await assertFails(market.updateProduct("test", "lol", accounts[3], 2, Currency.USD, 2, {from: accounts[1]}))
             await assertFails(market.offerProductOwnership("test", accounts[1], {from: accounts[1]}))
         })
 
