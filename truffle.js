@@ -16,7 +16,9 @@ module.exports = {
 		"local-mainnet": {
 			host: "localhost",
 			port: 8547,
-			network_id: "1"
+			network_id: "1",
+			gasPrice: "4000000000",
+			gas: "50000"	// enough for migration setCompleted
 		},
 		rinkeby: {
 			host: "94.130.239.166",
