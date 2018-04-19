@@ -3,6 +3,11 @@ module.exports = {
   // to customize your Truffle configuration!
 
 	networks: {
+		"local": {
+                        host: "localhost",
+                        port: 8545,
+                        network_id: "*"
+                },
 		"local-rinkeby": {
 			host: "localhost",
 			port: 8546,
