@@ -251,19 +251,25 @@ contract("Marketplace", accounts => {
             await assertFails(market.updateExchangeRates(now(), 100, {from: accounts[0]}))
         })
 
-        it("reports the correct rate", async () => {
-            assert.equal(await market.dataPerUsd(), 1)
-            await market.updateExchangeRates(now(), 3, {from: currencyUpdateAgent})
-            assert.equal(await market.dataPerUsd(), 3)
+        it("getters report the correct rates", async () => {
+            assertEqual(await market.dataPerUsd(), 0.1e18)
+            await market.updateExchangeRates(now(), 3e18, {from: currencyUpdateAgent})
+            assertEqual(await market.dataPerUsd(), 3e18)
         })
 
+        it("getPriceInData calculates prices correctly", async () => {
+            await market.updateExchangeRates(now(), 3e18, {from: currencyUpdateAgent})
+            assertEqual(await market.getPriceInData(13, 1e18, Currency.DATA), 13e18)
+            assertEqual(await market.getPriceInData(13, 1e18, Currency.USD), 39e18)
+        })
+        
         it("determine product price", async () => {            
             await token.approve(market.address, 1000, {from: accounts[1]})
-            await market.updateExchangeRates(now(), 10, {from: currencyUpdateAgent})
+            await market.updateExchangeRates(now(), 10e18, {from: currencyUpdateAgent})
             await assertFails(market.buy("test_currencies", 200, {from: accounts[1]}))
-            await market.updateExchangeRates(now(), 3, {from: currencyUpdateAgent})
+            await market.updateExchangeRates(now(), 3e18, {from: currencyUpdateAgent})
             assertEvent(await market.buy("test_currencies", 200, {from: accounts[1]}), "Subscribed")
-            assert.equal(await token.allowance(accounts[1], market.address), 1000 - 200 * 3)
+            assertEqual(await token.allowance(accounts[1], market.address), 1000 - 200 * 3)
         })
     })
 

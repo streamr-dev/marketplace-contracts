@@ -4,6 +4,9 @@ import "../node_modules/zeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "../node_modules/zeppelin-solidity/contracts/math/SafeMath.sol";
 import "../node_modules/zeppelin-solidity/contracts/ownership/Ownable.sol";
 
+// Note about numbers:
+//   All prices and exchange rates are in "decimal fixed-point", that is, scaled by 10^18, like ETH vs wei.
+//   Seconds are integers as usual.
 contract Marketplace is Ownable {
     using SafeMath for uint256;
 
@@ -30,8 +33,8 @@ contract Marketplace is Ownable {
     }
 
     enum Currency {
-        DATA,                       // data atoms or "wei" (10^-18 DATA)
-        USD                         // nanodollars (10^-9 USD)
+        DATA,                       // "token wei" (10^-18 DATA)
+        USD                         // attodollars (10^-18 USD)
     }
 
     struct Product {
@@ -171,7 +174,7 @@ contract Marketplace is Ownable {
         require(product.state == ProductState.Deployed, "error_notDeployed");
         _addSubscription(product, msg.sender, subscriptionSeconds, sub);
 
-        uint price = _toDatacoin(product.pricePerSecond.mul(subscriptionSeconds), product.priceCurrency);
+        uint price = getPriceInData(subscriptionSeconds, product.pricePerSecond, product.priceCurrency);        
         require(datacoin.transferFrom(msg.sender, product.beneficiary, price), "error_paymentFailed");
     }
 
@@ -225,14 +228,17 @@ contract Marketplace is Ownable {
     //   the account on another Marketplace; OR that there is a central credit pool (say, an ERC20 token)
     // Creating another ERC20 token for this could be a simple fix: it would need the ability to transfer allowances
 
-    /////////////// Currency management ///////////////
+    /////////////// Currency management ///////////////    
 
-    uint public dataPerUsd = 1;
+    // Exchange rates are formatted as "decimal fixed-point", that is, scaled by 10^18, like ether.
+    //        Exponent: 10^18 15 12  9  6  3  0
+    //                      |  |  |  |  |  |  |
+    uint public dataPerUsd = 100000000000000000;   // ~= 0.1 DATA/USD
 
     /**
     * Update currency exchange rates; all purchases are still billed in DATAcoin
     * @param timestamp in seconds when the exchange rates were last updated
-    * @param dataUsd how many data atoms (10^-18 DATA) equal one nanodollar (10^-9 USD)
+    * @param dataUsd how many data atoms (10^-18 DATA) equal one USD dollar
     */
     function updateExchangeRates(uint timestamp, uint dataUsd) public {
         require(msg.sender == currencyUpdateAgent, "error_notPermitted");
@@ -242,19 +248,16 @@ contract Marketplace is Ownable {
     }
 
     /**
-    * Allow updating currency exchange rates even if time of exchange rate isn't known
-    */
-    function updateExchangeRates(uint dataUsd) public {
-        require(msg.sender == currencyUpdateAgent);
-        dataPerUsd = dataUsd;
-        emit ExchangeRatesUpdated(block.timestamp, dataUsd);
-    }    
-
-    function _toDatacoin(uint number, Currency unit) view internal returns (uint datacoinAmount) {
+    * Helper function to calculate (hypothetical) subscription cost for given seconds and price, using current exchange rates.
+    * @param subscriptionSeconds length of hypothetical subscription, as a non-scaled integer
+    * @param price nominal price scaled by 10^18 ("token wei" or "attodollars")
+    * @param unit unit of the number price
+    */    
+    function getPriceInData(uint subscriptionSeconds, uint price, Currency unit) public view returns (uint datacoinAmount) {
         if (unit == Currency.DATA) {
-            return number;
+            return price.mul(subscriptionSeconds);
         }
-        return number.mul(dataPerUsd);
+        return price.mul(dataPerUsd).div(10**18).mul(subscriptionSeconds);
     }
 
     /////////////// Admin functionality ///////////////
