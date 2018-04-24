@@ -32,7 +32,7 @@ contract Community is Ownable {
     function join(string name) public {    
         Producer memory p = Producer(msg.sender, name, 0);
         joinRequests.push(p);
-        JoinRequested(p);
+        emit JoinRequested(p);
     }
 
     function accept(uint index) public onlyOwner {
@@ -40,7 +40,7 @@ contract Community is Ownable {
         require(p.addr != 0); //, "Join request has already been processed");
         producers[p.addr] = p;
         delete joinRequests[index];
-        ProducerJoined(p);
+        emit ProducerJoined(p);
         // createProduct for this separate producer?
     }
 
@@ -48,7 +48,7 @@ contract Community is Ownable {
         Producer memory p = joinRequests[index];
         require(p.addr != 0); //, "Join request has already been processed");        
         delete joinRequests[index];
-        JoinRequestRejected(p);
+        emit JoinRequestRejected(p);
     }
 
     function createProduct(bytes32 id, string name, uint pricePerSecond, Marketplace.Currency currency, uint minimumSubscriptionSeconds) internal {
