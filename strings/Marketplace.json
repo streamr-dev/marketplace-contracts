@@ -1,0 +1,18 @@
+{
+    "error_notPermitted": "Not permitted to call this function.",
+    "error_productOwnersOnly": "Only product owner may call this function.",
+
+    "error_notFound": "Product with this ID doesn't exist.",
+    "error_alreadyExists": "Product with this ID already exists.",
+    "error_nullProductId": "Product ID can't be empty/null/0x0.",
+    "error_freeProductsNotSupported": "Free streams are not handled by this smart contract, they go through a different channel.",
+    "error_notDeployed": "Product must be in 'deployed' state.",
+    "error_mustBeNotDeployed": "Product must be in 'not deployed' state.",
+
+    "error_paymentFailed": "DATAcoin payment failed. Did you set allowance to Marketplace?",
+    "error_subscriptionNotValid": "Subscription is not valid, perhaps it has run out.",
+    "error_topUpTooSmall": "Must top up worth at least one second.",
+    "error_newSubscriptionTooSmall": "More ether required to meet the minimum subscription period.",
+
+    "error_halted": "Marketplace is down for maintenance. Sorry for the inconvenience."
+}
