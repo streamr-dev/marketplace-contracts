@@ -19,7 +19,7 @@ contract Marketplace is Ownable {
     event Subscribed(bytes32 indexed productId, address indexed subscriber, uint endTimestamp);
     event NewSubscription(bytes32 indexed productId, address indexed subscriber, uint endTimestamp);
     event SubscriptionExtended(bytes32 indexed productId, address indexed subscriber, uint endTimestamp);
-    event SubscriptionTransferred(bytes32 indexed productId, address indexed from, address indexed to, uint secondsTransferred, uint datacoinTransferred);    
+    event SubscriptionTransferred(bytes32 indexed productId, address indexed from, address indexed to, uint secondsTransferred);
 
     // currency events
     event ExchangeRatesUpdated(uint timestamp, uint dataInUsd);
@@ -192,12 +192,11 @@ contract Marketplace is Ownable {
         TimeBasedSubscription storage sub;
         (isValid, product, sub) = _getSubscription(productId, msg.sender);
         uint secondsLeft = sub.endTimestamp.sub(block.timestamp);
-        uint datacoinLeft = secondsLeft.mul(product.pricePerSecond);
         require(isValid, "error_subscriptionNotValid");
         TimeBasedSubscription storage newSub = product.subscriptions[newSubscriber];
         _addSubscription(product, newSubscriber, secondsLeft, newSub);
         delete product.subscriptions[msg.sender];
-        emit SubscriptionTransferred(productId, msg.sender, newSubscriber, secondsLeft, datacoinLeft);
+        emit SubscriptionTransferred(productId, msg.sender, newSubscriber, secondsLeft);
     }
 
     function _getSubscription(bytes32 productId, address subscriber) internal constant returns (bool subIsValid, Product storage, TimeBasedSubscription storage) {
