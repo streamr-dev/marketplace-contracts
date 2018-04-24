@@ -167,9 +167,7 @@ contract Marketplace is Ownable {
      * If the address already has a valid subscription, extends the subscription by the given period.
      */
     function buy(bytes32 productId, uint subscriptionSeconds) public whenNotHalted {
-        Product storage product;
-        TimeBasedSubscription storage sub;
-        (, product, sub) = _getSubscription(productId, msg.sender);
+        var (, product, sub) = _getSubscription(productId, msg.sender);
         require(product.state == ProductState.Deployed, "error_notDeployed");
         _addSubscription(product, msg.sender, subscriptionSeconds, sub);
 
@@ -189,12 +187,9 @@ contract Marketplace is Ownable {
     * If the address already has a valid subscription, extends the subscription by the msg.sender's remaining period.
     */
     function transferSubscription(bytes32 productId, address newSubscriber) public whenNotHalted {
-        bool isValid = false;
-        Product storage product;
-        TimeBasedSubscription storage sub;
-        (isValid, product, sub) = _getSubscription(productId, msg.sender);
-        uint secondsLeft = sub.endTimestamp.sub(block.timestamp);
+        var (isValid, product, sub) = _getSubscription(productId, msg.sender);
         require(isValid, "error_subscriptionNotValid");
+        uint secondsLeft = sub.endTimestamp.sub(block.timestamp);        
         TimeBasedSubscription storage newSub = product.subscriptions[newSubscriber];
         _addSubscription(product, newSubscriber, secondsLeft, newSub);
         delete product.subscriptions[msg.sender];
