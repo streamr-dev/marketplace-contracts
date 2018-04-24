@@ -51,30 +51,9 @@ contract Marketplace is Ownable {
         uint endTimestamp;
     }
 
-    mapping (bytes32 => Product) products;
-    function getProduct(bytes32 id) public view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state) {
-        return (
-            products[id].name,
-            products[id].owner,
-            products[id].beneficiary,
-            products[id].pricePerSecond,
-            products[id].priceCurrency,
-            products[id].minimumSubscriptionSeconds,
-            products[id].state
-        );
-    }
+    /////////////// Marketplace lifecycle /////////////////
 
-    function getSubscription(bytes32 productId, address subscriber) public view returns (bool isValid, uint endTimestamp) {
-        TimeBasedSubscription storage sub;
-        (isValid, , sub) = _getSubscription(productId, subscriber);
-        endTimestamp = sub.endTimestamp;        
-    }
-
-    function getSubscriptionTo(bytes32 productId) public view returns (bool isValid, uint endTimestamp) {
-        return getSubscription(productId, msg.sender);
-    }
-
-    ERC20 datacoin;
+    ERC20 public datacoin;
 
     address public currencyUpdateAgent;
 
@@ -88,6 +67,19 @@ contract Marketplace is Ownable {
     }
 
     ////////////////// Product management /////////////////
+
+    mapping (bytes32 => Product) public products;
+    function getProduct(bytes32 id) public view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state) {
+        return (
+            products[id].name,
+            products[id].owner,
+            products[id].beneficiary,
+            products[id].pricePerSecond,
+            products[id].priceCurrency,
+            products[id].minimumSubscriptionSeconds,
+            products[id].state
+        );
+    }
 
     // also checks that p exists: p.owner == 0 for non-existent products    
     modifier onlyProductOwner(bytes32 productId) {
@@ -159,6 +151,16 @@ contract Marketplace is Ownable {
     }
 
     /////////////// Subscription management ///////////////
+
+    function getSubscription(bytes32 productId, address subscriber) public view returns (bool isValid, uint endTimestamp) {
+        TimeBasedSubscription storage sub;
+        (isValid, , sub) = _getSubscription(productId, subscriber);
+        endTimestamp = sub.endTimestamp;        
+    }
+
+    function getSubscriptionTo(bytes32 productId) public view returns (bool isValid, uint endTimestamp) {
+        return getSubscription(productId, msg.sender);
+    }
 
     /**
      * Purchases access to this stream for msg.sender.
