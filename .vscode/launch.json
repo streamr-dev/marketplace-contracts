@@ -16,6 +16,16 @@
         }, {
             "type": "node",
             "request": "launch",
+            "name": "Truffle migrate (local)",
+            "program": "/Users/jtakalai/.nvm/versions/node/v9.5.0/bin/truffle",
+            "args": [
+                "migrate",
+                "--network", "local"
+            ],
+            "internalConsoleOptions": "openOnSessionStart"
+        }, {
+            "type": "node",
+            "request": "launch",
             "name": "Launch Program",
             "program": "${workspaceFolder}/scripts/start.js"
         }

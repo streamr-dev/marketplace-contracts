@@ -10,6 +10,7 @@
   "license": "ISC",
   "devDependencies": {
     "async-wait-until": "1.1.7",
+    "node-fetch": "^2.1.2",
     "truffle": "4.1.7",
     "truffle-flattener": "1.2.5",
     "web3": "0.16.0",
