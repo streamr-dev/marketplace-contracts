@@ -15,7 +15,7 @@ module.exports = async (deployer, network) => {
   const market = await Marketplace.deployed()
   const products = await (await fetch(productListURL)).json()
 
-  for (p of products) {
+  for (let p of products) {
     await market.createProduct("0x" + p.id, p.name, streamrUpdaterAddress, p.pricePerSecond, p.priceCurrency == "DATA" ? 0 : 1, p.minimumSubscriptionInSeconds)//, {from: streamrUpdaterAddress})
     if (p.state == "NOT_DEPLOYED") {
       await market.deleteProduct("0x" + p.id)
