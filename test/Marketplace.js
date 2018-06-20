@@ -93,7 +93,7 @@ contract("Marketplace", accounts => {
         const token = await Token.new({from: accounts[0], data: TokenJson.bytecode, gas:4000000})
         await until(() => token.address)
         await Promise.all(accounts.map(acco => token.mint(acco, 1000000, {from: accounts[0], gas:4000000})))
-        const marketplace = await Marketplace.new(token.address, currencyUpdateAgent, {from: accounts[0], data: MarketplaceJson.bytecode, gas:4000000})
+        const marketplace = await Marketplace.new(token.address, currencyUpdateAgent, {from: accounts[0], data: MarketplaceJson.bytecode, gas:6000000})
         await until(() => marketplace.address)
 
         let res
