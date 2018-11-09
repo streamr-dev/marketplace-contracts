@@ -1,13 +1,13 @@
 pragma solidity ^0.4.22;
 
-import "../node_modules/zeppelin-solidity/contracts/token/ERC20/ERC20.sol";
-import "../node_modules/zeppelin-solidity/contracts/math/SafeMath.sol";
-import "../node_modules/zeppelin-solidity/contracts/ownership/Ownable.sol";
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
+import "openzeppelin-solidity/contracts/ownership/Claimable.sol";
 
 // Note about numbers:
 //   All prices and exchange rates are in "decimal fixed-point", that is, scaled by 10^18, like ETH vs wei.
 //   Seconds are integers as usual.
-contract Marketplace is Ownable {
+contract Marketplace is Claimable {
     using SafeMath for uint256;
 
     // product events
@@ -50,7 +50,7 @@ contract Marketplace is Ownable {
         address newOwnerCandidate;  // Two phase hand-over to minimize the chance that the product ownership is lost to a non-existent address.
     }
 
-    struct TimeBasedSubscription {        
+    struct TimeBasedSubscription {
         uint endTimestamp;
     }
 
@@ -60,7 +60,7 @@ contract Marketplace is Ownable {
 
     address public currencyUpdateAgent;
 
-    function Marketplace(address datacoinAddress, address currencyUpdateAgentAddress) Ownable() public {        
+    constructor(address datacoinAddress, address currencyUpdateAgentAddress) Claimable() public {
         _initialize(datacoinAddress, currencyUpdateAgentAddress);
     }
 
@@ -84,7 +84,7 @@ contract Marketplace is Ownable {
         );
     }
 
-    // also checks that p exists: p.owner == 0 for non-existent products    
+    // also checks that p exists: p.owner == 0 for non-existent products
     modifier onlyProductOwner(bytes32 productId) {
         Product storage p = products[productId];
         require(p.id != 0x0, "error_notFound");
@@ -104,7 +104,7 @@ contract Marketplace is Ownable {
     /**
     * Stop offering the product
     */
-    function deleteProduct(bytes32 productId) public onlyProductOwner(productId) {        
+    function deleteProduct(bytes32 productId) public onlyProductOwner(productId) {
         Product storage p = products[productId];
         require(p.state == ProductState.Deployed, "error_notDeployed");
         p.state = ProductState.NotDeployed;
@@ -114,7 +114,7 @@ contract Marketplace is Ownable {
     /**
     * Return product to market
     */
-    function redeployProduct(bytes32 productId) public onlyProductOwner(productId) {        
+    function redeployProduct(bytes32 productId) public onlyProductOwner(productId) {
         Product storage p = products[productId];
         require(p.state == ProductState.NotDeployed, "error_mustBeNotDeployed");
         p.state = ProductState.Deployed;
@@ -123,12 +123,12 @@ contract Marketplace is Ownable {
 
     function updateProduct(bytes32 productId, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds) public onlyProductOwner(productId) {
         require(pricePerSecond > 0, "error_freeProductsNotSupported");
-        Product storage p = products[productId]; 
+        Product storage p = products[productId];
         p.name = name;
         p.beneficiary = beneficiary;
         p.pricePerSecond = pricePerSecond;
         p.priceCurrency = currency;
-        p.minimumSubscriptionSeconds = minimumSubscriptionSeconds;        
+        p.minimumSubscriptionSeconds = minimumSubscriptionSeconds;
         emit ProductUpdated(p.owner, p.id, name, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds);
     }
 
@@ -146,7 +146,7 @@ contract Marketplace is Ownable {
     */
     function claimProductOwnership(bytes32 productId) public whenNotHalted {
         // also checks that productId exists (newOwnerCandidate is zero for non-existent)
-        Product storage p = products[productId]; 
+        Product storage p = products[productId];
         require(msg.sender == p.newOwnerCandidate, "error_notPermitted");
         emit ProductOwnershipChanged(msg.sender, productId, p.owner);
         p.owner = msg.sender;
@@ -156,9 +156,8 @@ contract Marketplace is Ownable {
     /////////////// Subscription management ///////////////
 
     function getSubscription(bytes32 productId, address subscriber) public view returns (bool isValid, uint endTimestamp) {
-        TimeBasedSubscription storage sub;
-        (isValid, , sub) = _getSubscription(productId, subscriber);
-        endTimestamp = sub.endTimestamp;        
+        (, TimeBasedSubscription storage s) = _getSubscription(productId, subscriber);
+        return (_isValid(s), s.endTimestamp);
     }
 
     function getSubscriptionTo(bytes32 productId) public view returns (bool isValid, uint endTimestamp) {
@@ -166,23 +165,25 @@ contract Marketplace is Ownable {
     }
 
     /**
-     * Purchases access to this stream for msg.sender.
-     * If the address already has a valid subscription, extends the subscription by the given period.
+     * Checks if the given address currently has a valid subscription
      */
-    function buy(bytes32 productId, uint subscriptionSeconds) public whenNotHalted {
-        var (, product, sub) = _getSubscription(productId, msg.sender);
-        require(product.state == ProductState.Deployed, "error_notDeployed");
-        _addSubscription(product, msg.sender, subscriptionSeconds, sub);
-
-        uint price = getPriceInData(subscriptionSeconds, product.pricePerSecond, product.priceCurrency);        
-        require(datacoin.transferFrom(msg.sender, product.beneficiary, price), "error_paymentFailed");
+    function hasValidSubscription(bytes32 productId, address subscriber) public view returns (bool isValid) {
+        (, TimeBasedSubscription storage s) = _getSubscription(productId, subscriber);
+        return _isValid(s);
     }
 
     /**
-    * Checks if the given address currently has a valid subscription
-    */
-    function hasValidSubscription(bytes32 productId, address subscriber) public constant returns (bool isValid) {
-        (isValid, ,) = _getSubscription(productId, subscriber);
+     * Purchases access to this stream for msg.sender.
+     * If the address already has a valid subscription, extends the subscription by the given period.
+     * @dev since v4.0: Notify the seller if the seller implements PurchaseListener interface
+     */
+    function buy(bytes32 productId, uint subscriptionSeconds) public whenNotHalted {
+        (Product storage product, TimeBasedSubscription storage s) = _getSubscription(productId, msg.sender);
+        require(product.state == ProductState.Deployed, "error_notDeployed");
+        _addSubscription(product, msg.sender, subscriptionSeconds, s);
+
+        uint price = getPriceInData(subscriptionSeconds, product.pricePerSecond, product.priceCurrency);
+        require(datacoin.transferFrom(msg.sender, product.beneficiary, price), "error_paymentFailed");
     }
 
     /**
@@ -190,28 +191,31 @@ contract Marketplace is Ownable {
     * If the address already has a valid subscription, extends the subscription by the msg.sender's remaining period.
     */
     function transferSubscription(bytes32 productId, address newSubscriber) public whenNotHalted {
-        var (isValid, product, sub) = _getSubscription(productId, msg.sender);
-        require(isValid, "error_subscriptionNotValid");
-        uint secondsLeft = sub.endTimestamp.sub(block.timestamp);        
+        (Product storage product, TimeBasedSubscription storage s) = _getSubscription(productId, msg.sender);
+        require(_isValid(s), "error_subscriptionNotValid");
+        uint secondsLeft = s.endTimestamp.sub(block.timestamp);
         TimeBasedSubscription storage newSub = product.subscriptions[newSubscriber];
         _addSubscription(product, newSubscriber, secondsLeft, newSub);
         delete product.subscriptions[msg.sender];
         emit SubscriptionTransferred(productId, msg.sender, newSubscriber, secondsLeft);
     }
 
-    function _getSubscription(bytes32 productId, address subscriber) internal constant returns (bool subIsValid, Product storage, TimeBasedSubscription storage) {
-        Product storage p = products[productId];
+    function _getSubscription(bytes32 productId, address subscriber) internal view returns (Product storage p, TimeBasedSubscription storage s) {
+        p = products[productId];
         require(p.id != 0x0, "error_notFound");
-        TimeBasedSubscription storage s = p.subscriptions[subscriber];
-        return (s.endTimestamp >= block.timestamp, p, s);
+        s = p.subscriptions[subscriber];
     }
-    
+
+    function _isValid(TimeBasedSubscription storage s) internal view returns (bool) {
+        return s.endTimestamp >= block.timestamp;
+    }
+
     function _addSubscription(Product storage p, address subscriber, uint addSeconds, TimeBasedSubscription storage oldSub) internal {
         uint endTimestamp;
         if (oldSub.endTimestamp > block.timestamp) {
             require(addSeconds > 0, "error_topUpTooSmall");
             endTimestamp = oldSub.endTimestamp.add(addSeconds);
-            oldSub.endTimestamp = endTimestamp;  
+            oldSub.endTimestamp = endTimestamp;
             emit SubscriptionExtended(p.id, subscriber, endTimestamp);
         } else {
             require(addSeconds >= p.minimumSubscriptionSeconds, "error_newSubscriptionTooSmall");
@@ -228,7 +232,7 @@ contract Marketplace is Ownable {
     //   the account on another Marketplace; OR that there is a central credit pool (say, an ERC20 token)
     // Creating another ERC20 token for this could be a simple fix: it would need the ability to transfer allowances
 
-    /////////////// Currency management ///////////////    
+    /////////////// Currency management ///////////////
 
     // Exchange rates are formatted as "decimal fixed-point", that is, scaled by 10^18, like ether.
     //        Exponent: 10^18 15 12  9  6  3  0
@@ -252,7 +256,7 @@ contract Marketplace is Ownable {
     * @param subscriptionSeconds length of hypothetical subscription, as a non-scaled integer
     * @param price nominal price scaled by 10^18 ("token wei" or "attodollars")
     * @param unit unit of the number price
-    */    
+    */
     function getPriceInData(uint subscriptionSeconds, uint price, Currency unit) public view returns (uint datacoinAmount) {
         if (unit == Currency.DATA) {
             return price.mul(subscriptionSeconds);
@@ -261,7 +265,7 @@ contract Marketplace is Ownable {
     }
 
     /////////////// Admin functionality ///////////////
-    
+
     event Halted();
     event Resumed();
     bool public halted = false;
