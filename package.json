@@ -3,18 +3,40 @@
   "version": "1.0.0",
   "description": "Smart contracts for Streamr Marketplace",
   "scripts": {
-    "build": "truffle migrate",
-    "test": "truffle test"
+    "clean": "rm -rf build/ && mkdir -p build/contracts",
+    "build": "truffle compile && ./flatten",
+    "deploy": "truffle migrate",
+    "test": "npm run clean && truffle compile && truffle test",
+    "lint": "eslint src"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "async-wait-until": "1.1.7",
-    "node-fetch": "^2.1.2",
-    "truffle": "4.1.7",
-    "truffle-flattener": "1.2.5",
-    "web3": "0.16.0",
-    "zeppelin-solidity": "git://github.com/OpenZeppelin/zeppelin-solidity.git#8f2a4785"
+    "babel-eslint": "^8.2.6",
+    "eslint": "^4.19.1",
+    "eslint-config-airbnb": "^16.1.0",
+    "eslint-config-streamr": "^1.1.7",
+    "eslint-plugin-flowtype": "^2.50.0",
+    "eslint-plugin-import": "^2.14.0",
+    "eslint-plugin-jsx-a11y": "^6.1.1",
+    "eslint-plugin-react": "^7.11.1",
+    "mocha": "^5.2.0",
+    "node-fetch": "^2.2.0",
+    "truffle": "^4.1.14",
+    "truffle-flattener": "1.2.5"
   },
-  "dependencies": {}
+  "dependencies": {
+    "body-parser": "^1.18.3",
+    "collections": "^5.1.5",
+    "eslint-config-streamr": "^1.1.7",
+    "eth-lib": "^0.2.8",
+    "express": "^4.16.3",
+    "ipfs": "^0.32.2",
+    "mz": "^2.7.0",
+    "openzeppelin-solidity": "^1.12.0",
+    "promise-events": "^0.1.4",
+    "solc": "^0.4.25",
+    "solidity-rlp": "^1.0.0",
+    "web3": "1.0.0-beta.36"
+  }
 }
