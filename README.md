@@ -1,3 +1,5 @@
+[![Build Status](https://travis-ci.com/streamr-dev/marketplace-contracts.svg?branch=master)](https://travis-ci.com/streamr-dev/marketplace-contracts)
+
 # Recommended setup
 * [VSCode](https://code.visualstudio.com/) with [*solidity* plugin](https://github.com/juanfranblanco/vscode-solidity/) (install through VSCode extensions) **OR**
 * [IDEA / WebStorm](https://www.jetbrains.com/) with [intellij-solidity plugin](https://plugins.jetbrains.com/plugin/9475-intellij-solidity)
