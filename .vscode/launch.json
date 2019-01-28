@@ -7,8 +7,27 @@
         {
             "type": "node",
             "request": "launch",
-            "name": "Truffle test",
-            "program": "/Users/jtakalai/.nvm/versions/node/v9.5.0/bin/truffle",
+            "name": "Truffle test current file",
+            "program": "${workspaceFolder}/node_modules/.bin/truffle",
+            "args": [
+                "test",
+                "${file}"
+            ],
+            "internalConsoleOptions": "openOnSessionStart"
+        }, {
+            "type": "node",
+            "request": "launch",
+            "name": "Mocha test current file",
+            "program": "${workspaceFolder}/node_modules/.bin/mocha",
+            "args": [
+                "${file}"
+            ],
+            "internalConsoleOptions": "openOnSessionStart"
+        }, {
+            "type": "node",
+            "request": "launch",
+            "name": "Truffle test all",
+            "program": "${workspaceFolder}/node_modules/.bin/truffle",
             "args": [
                 "test"
             ],
@@ -16,18 +35,12 @@
         }, {
             "type": "node",
             "request": "launch",
-            "name": "Truffle migrate (local)",
-            "program": "/Users/jtakalai/.nvm/versions/node/v9.5.0/bin/truffle",
+            "name": "Mocha test all",
+            "program": "${workspaceFolder}/node_modules/.bin/mocha",
             "args": [
-                "migrate",
-                "--network", "local"
+                "${workspaceFolder}/mocha-tests/"
             ],
             "internalConsoleOptions": "openOnSessionStart"
-        }, {
-            "type": "node",
-            "request": "launch",
-            "name": "Launch Program",
-            "program": "${workspaceFolder}/scripts/start.js"
         }
     ]
 }

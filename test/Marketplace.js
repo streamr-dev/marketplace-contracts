@@ -1,5 +1,6 @@
 const Marketplace = artifacts.require("./Marketplace.sol")
-const MintableToken = artifacts.require("zeppelin-solidity/contracts/token/ERC20/MintableToken.sol")
+const MockCommunity = artifacts.require("./MockCommunity.sol")
+const ERC20Mintable = artifacts.require("zeppelin-solidity/contracts/token/ERC20/ERC20Mintable.sol")
 
 const { Marketplace: { ProductState, Currency } } = require("../src/contracts/enums")
 
@@ -11,7 +12,7 @@ contract("Marketplace", accounts => {
     const currencyUpdateAgent = accounts[9]
     const admin = accounts[8]
     before(async () => {
-        token = await MintableToken.new({from: accounts[0]})
+        token = await ERC20Mintable.new({from: accounts[0]})
         await Promise.all(accounts.map(acco => token.mint(acco, 1000000)))
         market = await Marketplace.new(token.address, currencyUpdateAgent, {from: admin})
     })
@@ -122,6 +123,13 @@ contract("Marketplace", accounts => {
                 subscriber: accounts[1],
             })
             assert(await market.hasValidSubscription(productId, accounts[1]), {from: accounts[0]})
+        })
+
+        it("activates a PurchaseListener", async () => {
+            const listener = await MockCommunity.new(market.address, {from: admin})
+            await market.updateProduct(productId, "test", listener.address, 1, Currency.DATA, 1, {from: accounts[0]})
+            const res = await market.buy(productId, 100, {from: accounts[1]})
+            assertEventBySignature(res, "PurchaseRegistered()")
         })
     })
 

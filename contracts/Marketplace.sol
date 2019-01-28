@@ -2,12 +2,24 @@ pragma solidity ^0.4.22;
 
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
-import "openzeppelin-solidity/contracts/ownership/Claimable.sol";
 
-// Note about numbers:
-//   All prices and exchange rates are in "decimal fixed-point", that is, scaled by 10^18, like ETH vs wei.
-//   Seconds are integers as usual.
-contract Marketplace is Claimable {
+import "./PurchaseListener.sol";
+import "./Ownable.sol";
+
+/**
+ * @title Streamr Marketplace
+ * @dev note about numbers:
+ *   All prices and exchange rates are in "decimal fixed-point", that is, scaled by 10^18, like ETH vs wei.
+ *  Seconds are integers as usual.
+ *
+ * Next version TODO:
+ *  1. Bancor integration
+ *  - EIP-165 inferface definition; PurchaseListener
+ *  - struct creation should use named arguments: Product({id: id, ... })
+ *  - buyFor: buy could specify who gets to subscription (without transferSubscription)
+ *  - grantSubscription: product owner could give a subscription to X
+ */
+contract Marketplace is Ownable {
     using SafeMath for uint256;
 
     // product events
@@ -60,7 +72,7 @@ contract Marketplace is Claimable {
 
     address public currencyUpdateAgent;
 
-    constructor(address datacoinAddress, address currencyUpdateAgentAddress) Claimable() public {
+    constructor(address datacoinAddress, address currencyUpdateAgentAddress) Ownable() public {
         _initialize(datacoinAddress, currencyUpdateAgentAddress);
     }
 
@@ -156,8 +168,8 @@ contract Marketplace is Claimable {
     /////////////// Subscription management ///////////////
 
     function getSubscription(bytes32 productId, address subscriber) public view returns (bool isValid, uint endTimestamp) {
-        (, TimeBasedSubscription storage s) = _getSubscription(productId, subscriber);
-        return (_isValid(s), s.endTimestamp);
+        (, TimeBasedSubscription storage sub) = _getSubscription(productId, subscriber);
+        return (_isValid(sub), sub.endTimestamp);
     }
 
     function getSubscriptionTo(bytes32 productId) public view returns (bool isValid, uint endTimestamp) {
@@ -168,8 +180,8 @@ contract Marketplace is Claimable {
      * Checks if the given address currently has a valid subscription
      */
     function hasValidSubscription(bytes32 productId, address subscriber) public view returns (bool isValid) {
-        (, TimeBasedSubscription storage s) = _getSubscription(productId, subscriber);
-        return _isValid(s);
+        (, TimeBasedSubscription storage sub) = _getSubscription(productId, subscriber);
+        return _isValid(sub);
     }
 
     /**
@@ -178,12 +190,19 @@ contract Marketplace is Claimable {
      * @dev since v4.0: Notify the seller if the seller implements PurchaseListener interface
      */
     function buy(bytes32 productId, uint subscriptionSeconds) public whenNotHalted {
-        (Product storage product, TimeBasedSubscription storage s) = _getSubscription(productId, msg.sender);
+        (Product storage product, TimeBasedSubscription storage subcr) = _getSubscription(productId, msg.sender);
         require(product.state == ProductState.Deployed, "error_notDeployed");
-        _addSubscription(product, msg.sender, subscriptionSeconds, s);
+        _addSubscription(product, msg.sender, subscriptionSeconds, subcr);
 
         uint price = getPriceInData(subscriptionSeconds, product.pricePerSecond, product.priceCurrency);
         require(datacoin.transferFrom(msg.sender, product.beneficiary, price), "error_paymentFailed");
+
+        uint256 codeSize;
+        address addr = product.beneficiary;
+        assembly { codeSize := extcodesize(addr) }
+        if (codeSize > 0) {
+            require(PurchaseListener(product.beneficiary).onPurchase(productId, msg.sender, subcr.endTimestamp, price));
+        }
     }
 
     /**
@@ -191,9 +210,9 @@ contract Marketplace is Claimable {
     * If the address already has a valid subscription, extends the subscription by the msg.sender's remaining period.
     */
     function transferSubscription(bytes32 productId, address newSubscriber) public whenNotHalted {
-        (Product storage product, TimeBasedSubscription storage s) = _getSubscription(productId, msg.sender);
-        require(_isValid(s), "error_subscriptionNotValid");
-        uint secondsLeft = s.endTimestamp.sub(block.timestamp);
+        (Product storage product, TimeBasedSubscription storage sub) = _getSubscription(productId, msg.sender);
+        require(_isValid(sub), "error_subscriptionNotValid");
+        uint secondsLeft = sub.endTimestamp.sub(block.timestamp);
         TimeBasedSubscription storage newSub = product.subscriptions[newSubscriber];
         _addSubscription(product, newSubscriber, secondsLeft, newSub);
         delete product.subscriptions[msg.sender];

@@ -9,7 +9,7 @@ const { Marketplace: { Currency } } = require("../src/contracts/enums")
 describe("Marketplace", () => {
     it("can createProduct and buy also outside Truffle", async () => {
         const MarketplaceJson = require("../build/contracts/Marketplace.json")
-        const TokenJson = require("../build/contracts/MintableToken.json")
+        const TokenJson = require("../build/contracts/ERC20Mintable.json")
         const Marketplace = new w3.eth.Contract(MarketplaceJson.abi)
         const Token = new w3.eth.Contract(TokenJson.abi)
 

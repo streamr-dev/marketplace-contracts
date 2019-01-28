@@ -6,9 +6,10 @@ before_install:
 branches:
   only:
     - master
+    - next
     - /^v\d+\.\d+(\.\d+)?(-\S*)?$/
 jobs:
   include:
     - script:
         - "npm run test"
-      stage: "unit tests"
+      stage: "smart contract tests"
