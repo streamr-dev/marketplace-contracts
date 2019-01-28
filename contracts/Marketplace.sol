@@ -189,10 +189,11 @@ contract Marketplace is Ownable {
      * If the address already has a valid subscription, extends the subscription by the given period.
      * @dev since v4.0: Notify the seller if the seller implements PurchaseListener interface
      */
-    function buy(bytes32 productId, uint subscriptionSeconds) public whenNotHalted {
-        (Product storage product, TimeBasedSubscription storage subcr) = _getSubscription(productId, msg.sender);
+     
+    function buyFor(bytes32 productId, uint subscriptionSeconds, address recipient)  public whenNotHalted {
+        (Product storage product, TimeBasedSubscription storage subcr) = _getSubscription(productId, recipient);
         require(product.state == ProductState.Deployed, "error_notDeployed");
-        _addSubscription(product, msg.sender, subscriptionSeconds, subcr);
+        _addSubscription(product, recipient, subscriptionSeconds, subcr);
 
         uint price = getPriceInData(subscriptionSeconds, product.pricePerSecond, product.priceCurrency);
         require(datacoin.transferFrom(msg.sender, product.beneficiary, price), "error_paymentFailed");
@@ -201,9 +202,13 @@ contract Marketplace is Ownable {
         address addr = product.beneficiary;
         assembly { codeSize := extcodesize(addr) }
         if (codeSize > 0) {
-            require(PurchaseListener(product.beneficiary).onPurchase(productId, msg.sender, subcr.endTimestamp, price));
+            require(PurchaseListener(product.beneficiary).onPurchase(productId, recipient, subcr.endTimestamp, price));
         }
     }
+    function buy(bytes32 productId, uint subscriptionSeconds) public whenNotHalted {
+    	buyFor(productId,subscriptionSeconds,msg.sender);
+    }
+    
 
     /**
     * Transfer a valid subscription from msg.sender to a new address.
