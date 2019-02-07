@@ -92,9 +92,9 @@ return price per second of product in DATA, or reverts() if none found
 			return;
 		}
 		IERC20Token fromToken = bancor_conversion_path[0];
-		fromToken.transferFrom(msg.sender,address(this),amount);
-		fromToken.approve(bancor_converter_address, 0);
-		fromToken.approve(bancor_converter_address, amount);
+		require(fromToken.transferFrom(msg.sender,address(this),amount), "must pre approve token transfer");
+		require(fromToken.approve(bancor_converter_address, 0), "approval failed");
+		require(fromToken.approve(bancor_converter_address, amount), "approval failed");
 		buyUsingBancor(productId, bancor_conversion_path, minSubscriptionSeconds, amount, pricePerSecond, false);
 	}
 
