@@ -1,0 +1,2 @@
+#!/bin/sh
+curl https://api.bancor.network/0.1/converters?limit=300 | jq .data.page | jq  'map( { (.code) : . } ) | add ' > currencydata.json

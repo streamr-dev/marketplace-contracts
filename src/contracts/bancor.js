@@ -1,5 +1,5 @@
 // <script src="bower_components/abi-decoder/dist/abi-decoder.js"> // Javascript
-const abiDecoder = require('abi-decoder'); 
+const abiDecoder = require('abi-decoder');
 const https = require('https');
 const Web3 = require("web3");
 const fs = require('fs');
@@ -119,3 +119,7 @@ getBancorGasPrice(web3, function(gasPrice){
 var marketplace_contract =  new web3.eth.Contract(marketplace_abi,marketplace_address);
 marketplace_contract.methods.getSubscription(productId,ba_add).call().then(console.log);
 */
+
+module.exports = {
+    makeBancorPath,
+}
