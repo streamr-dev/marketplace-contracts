@@ -30,10 +30,11 @@ contract BancorAdaptor {
 
 	address public marketplace_address;
 	address public bancor_converter_address;
-	address public datacoin_address = 0x0Cf0Ee63788A0849fE5297F3407f701E122cC023;
-	constructor(address _marketplace_address, address _bancor_converter_address) public {
+	address public datacoin_address;
+	constructor(address _marketplace_address, address _bancor_converter_address, address _datacoin_address) public {
 		marketplace_address = _marketplace_address;
 		bancor_converter_address = _bancor_converter_address;
+		datacoin_address = _datacoin_address;
 	}
 /*
 return price per second of product in DATA, or reverts() if none found
@@ -58,14 +59,14 @@ return price per second of product in DATA, or reverts() if none found
 		require(received_datacoin != 0x0, "no datacoin returned");
 
 		IERC20Token datacoin = IERC20Token(datacoin_address);
-		datacoin.approve(marketplace_address,0);
-		datacoin.approve(marketplace_address,received_datacoin);
+		require(datacoin.approve(marketplace_address,0),"approval failed");
+		require(datacoin.approve(marketplace_address,received_datacoin),"approval failed");
 
 		Marketplace mkt = Marketplace(marketplace_address);
-		mkt.buy(productId,received_datacoin.div(pricePerSecond));
+		//mkt.buy(productId,received_datacoin.div(pricePerSecond));
 
 		// buyFor() not yet deployed in Marketplace. buy() buys subscription for this contract for testing
-		//mkt.buyFor(productId,received_datacoin / pricePerSecond,msg.sender);
+		mkt.buyFor(productId,received_datacoin.div(pricePerSecond),msg.sender);
 	}
 	
 	function buyWithETH(bytes32 productId,IERC20Token[] bancor_conversion_path,uint minSubscriptionSeconds) public payable{

@@ -1,2 +1,4 @@
 #!/bin/sh
-curl https://api.bancor.network/0.1/converters?limit=300 | jq .data.page | jq  'map( { (.code) : . } ) | add ' > currencydata.json
+DATAFILE=currencydata.json
+test -f $DATAFILE && echo "$DATAFILE exists" && exit
+curl https://api.bancor.network/0.1/converters?limit=300 | jq '.data.page | map( { (.code) : . } ) | add ' > $DATAFILE
