@@ -50,6 +50,7 @@ contract("BancorAdaptor", accounts => {
             await assertFails(bancorAdaptor.buyWithETH(productId, path,11,{from: buyer, value: w3.utils.toWei('10')}));
         })
         it("can buy prouct with ETH", async () => {
+            //path[0] is ignored when converting from ETH with MockBancorConverter
             var path = [fromToken.address, dataToken.address]
             const [validBefore, endtimeBefore]  = await market.getSubscription(productId,buyer, {from: buyer});
             await bancorAdaptor.buyWithETH(productId, path,9,{from: buyer, value: w3.utils.toWei('10')})       
@@ -57,6 +58,16 @@ contract("BancorAdaptor", accounts => {
             assert(validAfter);
             assert(endtimeAfter - endtimeBefore > 10 - testToleranceSeconds)
 
+        })
+        it("can buy product with ERC20", async () => {
+            var path = [fromToken.address, dataToken.address]
+            const [validBefore, endtimeBefore]  = await market.getSubscription(productId,buyer, {from: buyer});
+            var value = w3.utils.toWei('10');
+            await fromToken.approve(bancorAdaptor.address,value,{from: buyer});
+            await bancorAdaptor.buyWithERC20(productId, path,9, value,{from: buyer})
+            const [validAfter, endtimeAfter]  = await market.getSubscription(productId,buyer, {from: buyer});
+            assert(validAfter);
+            assert(endtimeAfter - endtimeBefore > 10 - testToleranceSeconds)
         })
 
     })
