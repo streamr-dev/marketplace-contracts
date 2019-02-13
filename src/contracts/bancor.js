@@ -1,12 +1,10 @@
-// <script src="bower_components/abi-decoder/dist/abi-decoder.js"> // Javascript
-const abiDecoder = require('abi-decoder');
 const https = require('https');
 const Web3 = require("web3");
 const fs = require('fs');
 
 /*
 fetch this file from Bancor:
-curl https://api.bancor.network/0.1/converters?limit=300 | jq .data.page | jq  'map( { (.code) : . } ) | add ' > currencydata.json
+curl https://api.bancor.network/0.1/converters?limit=300 | jq '.data.page | map( { (.code) : . } ) | add ' > currencydata.json
 */
 const currencyinfo = JSON.parse(fs.readFileSync('./currencydata.json', 'utf-8'));
 
@@ -60,13 +58,26 @@ function approve(web3,fromAddress, tokenAddress, spender, amount){
 			};
 	return rawTransaction;	
 }
-
+/**
+ * 
+ * @param {*} web3 
+ * @param {*} fromAddress 
+ * @param {*} productId 
+ * @param {*} fromCurrency 
+ * @param {*} amount 
+ * @param {*} minSeconds 
+ * @param {*} gasPrice 
+ * @param {*} transactionExecutor this function will be passed raw transactions to be executed
+ */
 function buySubscriptionUsingBancor(web3,fromAddress,productId, fromCurrency,amount,minSeconds,gasPrice,transactionExecutor){
 	var path = makeBancorPath(fromCurrency,"DATA");
 	var ba_contract =  new web3.eth.Contract(ba_abi,ba_add);
 	var data;
-	if(fromCurrency == "ETH")
+	var value=0;
+	if(fromCurrency == "ETH"){
 		data = ba_contract.methods.buyWithETH(productId,path,minSeconds).encodeABI();
+		value = amount;
+	}
 	else{
 		var approval = approve(web3,fromAddress,path[0],ba_add,amount);
 		console.log("Purchases with token require approval: ");
@@ -79,14 +90,18 @@ function buySubscriptionUsingBancor(web3,fromAddress,productId, fromCurrency,amo
 		"to": ba_add,
 		"gas": 2000000,
 		"data":data,
-		"gasPrice":gasPrice
+		"gasPrice":gasPrice,
+		"value": value
 	};
-	if(fromCurrency == "ETH"){
-		rawTransaction["value"] = amount;
-	}
 	transactionExecutor(rawTransaction);
 }
 /////////////////////////////////
+
+
+module.exports = {
+    makeBancorPath, buySubscriptionUsingBancor,getBancorGasPrice
+}
+
 
 /*
 ////////////////////////////////////////////////
@@ -119,7 +134,3 @@ getBancorGasPrice(web3, function(gasPrice){
 var marketplace_contract =  new web3.eth.Contract(marketplace_abi,marketplace_address);
 marketplace_contract.methods.getSubscription(productId,ba_add).call().then(console.log);
 */
-
-module.exports = {
-    makeBancorPath,
-}

@@ -184,11 +184,7 @@ contract Marketplace is Ownable {
         return _isValid(sub);
     }
 
-    /**
-     * Purchases access to this stream for msg.sender.
-     * If the address already has a valid subscription, extends the subscription by the given period.
-     * @dev since v4.0: Notify the seller if the seller implements PurchaseListener interface
-     */
+   
      
     function buyFor(bytes32 productId, uint subscriptionSeconds, address recipient)  public whenNotHalted {
         (Product storage product, TimeBasedSubscription storage subcr) = _getSubscription(productId, recipient);
@@ -205,6 +201,12 @@ contract Marketplace is Ownable {
             require(PurchaseListener(product.beneficiary).onPurchase(productId, recipient, subcr.endTimestamp, price));
         }
     }
+
+     /**
+     * Purchases access to this stream for msg.sender.
+     * If the address already has a valid subscription, extends the subscription by the given period.
+     * @dev since v4.0: Notify the seller if the seller implements PurchaseListener interface
+     */
     function buy(bytes32 productId, uint subscriptionSeconds) public whenNotHalted {
     	buyFor(productId,subscriptionSeconds,msg.sender);
     }

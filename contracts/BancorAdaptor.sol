@@ -48,7 +48,7 @@ return price per second of product in DATA, or reverts() if none found
 	
 	function buyUsingBancor(bytes32 productId,IERC20Token[] bancor_conversion_path,uint minSubscriptionSeconds, uint amount, uint pricePerSecond, bool isEth) internal {
 		require(bancor_conversion_path[bancor_conversion_path.length - 1] == datacoin_address, "must convert to DATAcoin");
-		require(pricePerSecond > 0);
+		require(pricePerSecond > 0, "buyUsingBancor requires pricePerSecond > 0");
 		
 		uint min_datacoin = pricePerSecond.mul(minSubscriptionSeconds);
 
