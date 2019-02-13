@@ -6,7 +6,7 @@
     "clean": "rm -rf build/ && mkdir -p build/contracts",
     "build": "truffle compile && ./flatten",
     "deploy": "truffle migrate",
-    "test": "npm run clean && truffle compile && truffle test"
+    "test": "./download_bancor_conversion_paths && npm run clean && truffle compile && truffle test"
   },
   "author": "",
   "license": "ISC",
