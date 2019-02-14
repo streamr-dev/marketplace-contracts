@@ -64,7 +64,6 @@ return price per second of product in DATA, or reverts() if none found
 
 		Marketplace mkt = Marketplace(marketplace_address);
 
-		// buyFor() not yet deployed in Marketplace. buy() buys subscription for this contract for testing
 		mkt.buyFor(productId,received_datacoin.div(pricePerSecond),msg.sender);
 	}
 	
