@@ -42,12 +42,7 @@ return price per second of product in DATA, or reverts() if none found
 	function _getPricePerSecond(Marketplace mkt, bytes32 productId) internal returns (uint) {
 		(string memory name, address owner, address beneficiary, uint pricePerSecond, Marketplace.Currency priceCurrency, uint minimumSubscriptionSeconds, Marketplace.ProductState state) = mkt.getProduct(productId);
 		require(owner != 0x0, "not found");
-		if(priceCurrency == Marketplace.Currency.DATA){
-			return pricePerSecond;
-		}
-		else{
-			return pricePerSecond.mul(mkt.dataPerUsd()).div(10**18);
-		}
+		return mkt.getPriceInData(1, pricePerSecond, priceCurrency);
 	}
 	
 	function _buyUsingBancor(bytes32 productId,IERC20Token[] bancor_conversion_path,uint minSubscriptionSeconds, uint amount, uint pricePerSecond, bool isEth) internal {
