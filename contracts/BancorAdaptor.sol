@@ -63,7 +63,6 @@ return price per second of product in DATA, or reverts() if none found
 		require(datacoin.approve(marketplace_address,received_datacoin),"approval failed");
 
 		Marketplace mkt = Marketplace(marketplace_address);
-		//mkt.buy(productId,received_datacoin.div(pricePerSecond));
 
 		// buyFor() not yet deployed in Marketplace. buy() buys subscription for this contract for testing
 		mkt.buyFor(productId,received_datacoin.div(pricePerSecond),msg.sender);
