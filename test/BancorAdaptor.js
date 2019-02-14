@@ -49,7 +49,7 @@ contract("BancorAdaptor", accounts => {
             //will return 10 data coin, which pays for 10s
             await assertFails(bancorAdaptor.buyWithETH(productId, path,11,{from: buyer, value: w3.utils.toWei('10')}));
         })
-        it("can buy prouct with ETH", async () => {
+        it("can buy product with ETH", async () => {
             //path[0] is ignored when converting from ETH with MockBancorConverter
             var path = [fromToken.address, dataToken.address]
             const [validBefore, endtimeBefore]  = await market.getSubscription(productId,buyer, {from: buyer});

@@ -102,35 +102,3 @@ module.exports = {
     makeBancorPath, buySubscriptionUsingBancor,getBancorGasPrice
 }
 
-
-/*
-////////////////////////////////////////////////
-// Example Usage:
-//var mykey = {...};
-//var mykey_passwd = 'MYPASSWD';
-//var web3_provider = new Web3.providers.HttpProvider("http://localhost:8545");
-
-
-web3 = new Web3(web3_provider);
-var pk = web3.eth.accounts.decrypt(mykey, mykey_passwd).privateKey;
-var ethadd= '0x'+mykey.address;
-var productId='0x3598682136924954b7fd197b64734b6fddb818a8acec401cadc02280c1fda4f6';
-
-function processTx(rawTx){
-	console.log("UnsignedTx:"+ JSON.stringify(rawTx));	
-	//sign the tx
-	web3.eth.accounts.signTransaction(rawTx, pk).then((signed) => {
-			//this is the signed transaction, ready for posting to blockchain
-			var signedTx = signed.rawTransaction;
-			console.log("RAW SIGNED TX: "+ signedTx);
-	});
-}
-
-getBancorGasPrice(web3, function(gasPrice){
-		buySubscriptionUsingBancor(web3,ethadd,productId, "GNO",web3.utils.toWei('.01'),99,gasPrice,processTx)
-});
-
-//when transaction confirmed, check subscription:
-var marketplace_contract =  new web3.eth.Contract(marketplace_abi,marketplace_address);
-marketplace_contract.methods.getSubscription(productId,ba_add).call().then(console.log);
-*/

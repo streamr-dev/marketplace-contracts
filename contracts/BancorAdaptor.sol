@@ -39,14 +39,18 @@ contract BancorAdaptor {
 /*
 return price per second of product in DATA, or reverts() if none found
 */
-	function getProductPrice(Marketplace mkt, bytes32 productId) internal returns (uint) {
+	function _getPricePerSecond(Marketplace mkt, bytes32 productId) internal returns (uint) {
 		(string memory name, address owner, address beneficiary, uint pricePerSecond, Marketplace.Currency priceCurrency, uint minimumSubscriptionSeconds, Marketplace.ProductState state) = mkt.getProduct(productId);
 		require(owner != 0x0, "not found");
-		require(priceCurrency == Marketplace.Currency.DATA, "price not in DATA");
-		return pricePerSecond;
+		if(priceCurrency == Marketplace.Currency.DATA){
+			return pricePerSecond;
+		}
+		else{
+			return pricePerSecond.mul(mkt.dataPerUsd()).div(10**18);
+		}
 	}
 	
-	function buyUsingBancor(bytes32 productId,IERC20Token[] bancor_conversion_path,uint minSubscriptionSeconds, uint amount, uint pricePerSecond, bool isEth) internal {
+	function _buyUsingBancor(bytes32 productId,IERC20Token[] bancor_conversion_path,uint minSubscriptionSeconds, uint amount, uint pricePerSecond, bool isEth) internal {
 		require(bancor_conversion_path[bancor_conversion_path.length - 1] == datacoin_address, "must convert to DATAcoin");
 		require(pricePerSecond > 0, "buyUsingBancor requires pricePerSecond > 0");
 		
@@ -69,7 +73,7 @@ return price per second of product in DATA, or reverts() if none found
 	
 	function buyWithETH(bytes32 productId,IERC20Token[] bancor_conversion_path,uint minSubscriptionSeconds) public payable{
 		Marketplace mkt = Marketplace(marketplace_address);
-		uint pricePerSecond = getProductPrice(mkt, productId);
+		uint pricePerSecond = _getPricePerSecond(mkt, productId);
 
 		if(pricePerSecond == 0x0){
 		//subscription is free. return payment and subscribe
@@ -79,12 +83,12 @@ return price per second of product in DATA, or reverts() if none found
 			mkt.buyFor(productId,minSubscriptionSeconds,msg.sender);
 			return;
 		}		
-		buyUsingBancor(productId, bancor_conversion_path, minSubscriptionSeconds, msg.value, pricePerSecond, true);
+		_buyUsingBancor(productId, bancor_conversion_path, minSubscriptionSeconds, msg.value, pricePerSecond, true);
 	}
 	
 	function buyWithERC20(bytes32 productId,IERC20Token[] bancor_conversion_path,uint minSubscriptionSeconds, uint amount) public{
 		Marketplace mkt = Marketplace(marketplace_address);
-		uint pricePerSecond = getProductPrice(mkt, productId);
+		uint pricePerSecond = _getPricePerSecond(mkt, productId);
 		if(pricePerSecond == 0x0){
 			//subscription is free. return payment and subscribe
 			mkt.buyFor(productId,minSubscriptionSeconds,msg.sender);
@@ -94,7 +98,7 @@ return price per second of product in DATA, or reverts() if none found
 		require(fromToken.transferFrom(msg.sender,address(this),amount), "must pre approve token transfer");
 		require(fromToken.approve(bancor_converter_address, 0), "approval failed");
 		require(fromToken.approve(bancor_converter_address, amount), "approval failed");
-		buyUsingBancor(productId, bancor_conversion_path, minSubscriptionSeconds, amount, pricePerSecond, false);
+		_buyUsingBancor(productId, bancor_conversion_path, minSubscriptionSeconds, amount, pricePerSecond, false);
 	}
 
 }
