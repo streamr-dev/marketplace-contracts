@@ -9,7 +9,7 @@ const w3 = new Web3(web3.currentProvider)
 const { assertEvent, assertEqual, assertFails, assertEventBySignature, now } = require("./testHelpers")
 
 const paths = require("../currencydata")
-const bancor = require("../src/contracts/bancor")
+const bancor = require("../src/bancor")
 
 contract("BancorAdaptor", accounts => {
     let market
