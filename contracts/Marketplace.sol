@@ -199,13 +199,13 @@ contract Marketplace is Ownable {
         }
         uint256 codeSize;
         address addr = product.beneficiary;
-        assembly { codeSize := extcodesize(addr) }
+        assembly { codeSize := extcodesize(addr) }  // solhint-disable-line no-inline-assembly
         if (codeSize > 0) {
             require(PurchaseListener(product.beneficiary).onPurchase(productId, recipient, subcr.endTimestamp, price));
         }
     }
 
-    function grantSubscription(bytes32 productId, uint subscriptionSeconds, address recipient) public onlyProductOwner(productId){
+    function grantSubscription(bytes32 productId, uint subscriptionSeconds, address recipient) public whenNotHalted onlyProductOwner(productId){
         return _subscribe(productId, subscriptionSeconds, recipient, false);
     }
     function buyFor(bytes32 productId, uint subscriptionSeconds, address recipient)  public whenNotHalted {
