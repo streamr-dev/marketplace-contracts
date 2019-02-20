@@ -6,12 +6,13 @@
     "clean": "rm -rf build/ && mkdir -p build/contracts",
     "build": "truffle compile && ./flatten",
     "deploy": "truffle migrate",
-    "lint": "./node_modules/.bin/solhint contracts/**/*.sol",
+    "lint": "./node_modules/.bin/eslint src && ./node_modules/.bin/solhint contracts/**/*.sol",
     "test": "./download_bancor_conversion_paths && npm run clean && truffle compile && truffle test"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "eslint": "^5.14.1",
     "mocha": "^5.2.0",
     "node-fetch": "^2.2.0",
     "openzeppelin-solidity": "2.0.0",
