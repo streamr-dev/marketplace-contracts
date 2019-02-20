@@ -1,6 +1,9 @@
-pragma solidity ^0.4.22;
+pragma solidity 0.4.25;
 
 import "./PurchaseListener.sol";
+
+// Cause truffle compile to also build the ERC20Mintable for testing
+import "openzeppelin-solidity/contracts/token/ERC20/ERC20Mintable.sol";
 
 /**
  * Part of Marketplace unit tests; tests that subscription notifies beneficiary contract
