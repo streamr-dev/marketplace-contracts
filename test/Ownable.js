@@ -24,8 +24,8 @@ contract("Ownable", (accounts) => {
         assert.isTrue(pendingOwner === newOwner)
     })
 
-    it("should prevent to claimOwnership from no pendingOwner", async () => {
-        assertFails(ownable.claimOwnership({ from: accounts[2] }))
+    it("should prevent to claimOwnership from not-pendingOwner", async () => {
+        assertFails(ownable.claimOwnership({ from: accounts[2] }), "onlyPendingOwner")
     })
 
     it("should prevent non-owners from transfering", async () => {
@@ -33,7 +33,7 @@ contract("Ownable", (accounts) => {
         const owner = await ownable.owner.call()
 
         assert.isTrue(owner !== other)
-        assertFails(ownable.transferOwnership(other, { from: other }))
+        assertFails(ownable.transferOwnership(other, { from: other }), "onlyOwner")
     })
 
     describe("after initiating a transfer", () => {

@@ -11,5 +11,8 @@ branches:
 jobs:
   include:
     - script:
+        - "npm run lint"
+      stage: "smart contract lint"
+    - script:
         - "npm run test"
       stage: "smart contract tests"

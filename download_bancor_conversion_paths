@@ -1,0 +1,9 @@
+#!/bin/bash
+which jq
+if [ $? != "0" ]; then
+  echo "Please install jq"
+  exit 1
+fi
+DATAFILE=currencydata.json
+test -f $DATAFILE && echo "$DATAFILE exists" && exit
+curl https://api.bancor.network/0.1/converters?limit=300 | jq '.data.page | map( { (.code) : . } ) | add ' > $DATAFILE

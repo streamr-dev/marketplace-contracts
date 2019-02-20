@@ -35,13 +35,13 @@ contract("Marketplace", accounts => {
         })
 
         it("will not accept empty product ID", async () => {
-            await assertFails(market.createProduct("", "test", accounts[0], 1, Currency.DATA, 1, {from: accounts[1]}))
+            await assertFails(market.createProduct("", "test", accounts[0], 1, Currency.DATA, 1, {from: accounts[1]}), "error_nullProductId")
         })
 
         it("can only be deleted/modified by owner", async () => {
-            await assertFails(market.deleteProduct("test", {from: accounts[1]}))
-            await assertFails(market.updateProduct("test", "lol", accounts[3], 2, Currency.USD, 2, {from: accounts[1]}))
-            await assertFails(market.offerProductOwnership("test", accounts[1], {from: accounts[1]}))
+            await assertFails(market.deleteProduct("test", {from: accounts[1]}), "error_productOwnersOnly")
+            await assertFails(market.updateProduct("test", "lol", accounts[3], 2, Currency.USD, 2, {from: accounts[1]}), "error_productOwnersOnly")
+            await assertFails(market.offerProductOwnership("test", accounts[1], {from: accounts[1]}), "error_productOwnersOnly")
         })
 
         it("deletes the previously created product", async () => {
@@ -50,7 +50,7 @@ contract("Marketplace", accounts => {
         })
 
         it("can only be redeployed by owner", async () => {
-            await assertFails(market.redeployProduct("test", {from: accounts[1]}))
+            await assertFails(market.redeployProduct("test", {from: accounts[1]}), "error_productOwnersOnly")
         })
 
         it("redeploys the previously deleted product", async () => {
@@ -87,7 +87,7 @@ contract("Marketplace", accounts => {
         })
 
         it("claiming fails if not designated as newOwnerCandidate", async () => {
-            await assertFails(market.claimProductOwnership("test", {from: accounts[1]}))
+            await assertFails(market.claimProductOwnership("test", {from: accounts[1]}), "error_notPermitted")
         })
     })
 
@@ -101,8 +101,8 @@ contract("Marketplace", accounts => {
         })
 
         it("fails for bad arguments", async () => {
-            await assertFails(market.buy(productId, 0, {from: accounts[0]}))
-            await assertFails(market.buy(productId, 0, {from: accounts[1]}))
+            await assertFails(market.buy(productId, 0, {from: accounts[0]}), "error_newSubscriptionTooSmall")
+            await assertFails(market.buy(productId, 0, {from: accounts[1]}), "error_newSubscriptionTooSmall")
         })
 
         it("fails if allowance not given", async () => {
@@ -171,7 +171,7 @@ contract("Marketplace", accounts => {
         })
 
         it("can not be set by non-currencyUpdateAgent", async () => {
-            await assertFails(market.updateExchangeRates(now(), 100, {from: accounts[0]}))
+            await assertFails(market.updateExchangeRates(now(), 100, {from: accounts[0]}), "error_notPermitted")
         })
 
         it("getters report the correct rates", async () => {
@@ -198,9 +198,9 @@ contract("Marketplace", accounts => {
 
     describe("Admin powers", () => {
         it("can't be invoked by non-admins", async () => {
-            await assertFails(market.halt({from: accounts[0]}))
-            await assertFails(market.resume({from: currencyUpdateAgent}))
-            await assertFails(market.reInitialize(token.address, accounts[3], {from: accounts[2]}))
+            await assertFails(market.halt({from: accounts[0]}), "onlyOwner")
+            await assertFails(market.resume({from: currencyUpdateAgent}), "onlyOwner")
+            await assertFails(market.reInitialize(token.address, accounts[3], {from: accounts[2]}), "onlyOwner")
         })
 
         it("can halt product creation and buying except for the owner", async () => {
@@ -210,9 +210,9 @@ contract("Marketplace", accounts => {
             await market.buy("test_admin_halt", 100, {from: accounts[2]})
 
             await market.halt({from: admin})
-            await assertFails(market.createProduct("test_admin_halt2", "test", accounts[3], 1, Currency.USD, 1, {from: accounts[0]}))
-            await assertFails(market.buy("test_admin_halt", 100, {from: accounts[2]}))
-            await assertFails(market.transferSubscription("test_admin_halt", accounts[1], {from: accounts[2]}))
+            await assertFails(market.createProduct("test_admin_halt2", "test", accounts[3], 1, Currency.USD, 1, {from: accounts[0]}), "error_halted")
+            await assertFails(market.buy("test_admin_halt", 100, {from: accounts[2]}), "error_halted")
+            await assertFails(market.transferSubscription("test_admin_halt", accounts[1], {from: accounts[2]}), "error_halted")
             await market.createProduct("test_admin_halt3", "test", accounts[3], 1, Currency.USD, 1, {from: admin})
             await market.buy("test_admin_halt", 100, {from: admin})
 
@@ -232,8 +232,8 @@ contract("Marketplace", accounts => {
 
             await market.halt({from: admin})
             await market.offerProductOwnership("test_admin_halt_transfer", accounts[0], {from: accounts[1]})
-            await assertFails(market.claimProductOwnership("test_admin_halt_transfer", {from: accounts[0]}))
-            await assertFails(market.transferSubscription("test_admin_halt_transfer", accounts[2], {from: accounts[3]}))
+            await assertFails(market.claimProductOwnership("test_admin_halt_transfer", {from: accounts[0]}), "error_halted")
+            await assertFails(market.transferSubscription("test_admin_halt_transfer", accounts[2], {from: accounts[3]}), "error_halted")
 
             await market.resume({from: admin})
             await market.claimProductOwnership("test_admin_halt_transfer", {from: accounts[0]})
@@ -243,7 +243,7 @@ contract("Marketplace", accounts => {
         it("can re-initialize the contract", async () => {
             await market.updateExchangeRates(now(), 3, {from: currencyUpdateAgent})
             await market.reInitialize(token.address, accounts[5], {from: admin})
-            await assertFails(market.updateExchangeRates(now(), 5, {from: currencyUpdateAgent}))
+            await assertFails(market.updateExchangeRates(now(), 5, {from: currencyUpdateAgent}), "error_notPermitted")
             await market.updateExchangeRates(now(), 5, {from: accounts[5]})
             await market.reInitialize(token.address, currencyUpdateAgent, {from: admin})
             await market.updateExchangeRates(now(), 7, {from: currencyUpdateAgent})
@@ -251,27 +251,27 @@ contract("Marketplace", accounts => {
 
         it("can control all products", async () => {
             await market.createProduct("test_admin_control", "test", accounts[3], 1, Currency.USD, 1, {from: accounts[0]})
-            await assertFails(market.deleteProduct("test_admin_control", {from: currencyUpdateAgent}))
+            await assertFails(market.deleteProduct("test_admin_control", {from: currencyUpdateAgent}), "error_productOwnersOnly")
             await market.deleteProduct("test_admin_control", {from: admin})
-            await assertFails(market.redeployProduct("test_admin_control", {from: accounts[5]}))
+            await assertFails(market.redeployProduct("test_admin_control", {from: accounts[5]}), "error_productOwnersOnly")
             await market.redeployProduct("test_admin_control", {from: admin})
-            await assertFails(market.updateProduct("test_admin_control", "lol", accounts[3], 2, Currency.DATA, 2, {from: accounts[1]}))
+            await assertFails(market.updateProduct("test_admin_control", "lol", accounts[3], 2, Currency.DATA, 2, {from: accounts[1]}), "error_productOwnersOnly")
             await market.updateProduct("test_admin_control", "lol", accounts[3], 2, Currency.DATA, 2, {from: admin})
-            await assertFails(market.offerProductOwnership("test_admin_control", accounts[1], {from: accounts[1]}))
+            await assertFails(market.offerProductOwnership("test_admin_control", accounts[1], {from: accounts[1]}), "error_productOwnersOnly")
             await market.offerProductOwnership("test_admin_control", admin, {from: admin})
         })
 
         it("can be transferred", async () => {
-            await assertFails(market.halt({from: accounts[0]}))
+            await assertFails(market.halt({from: accounts[0]}), "onlyOwner")
             market.transferOwnership(accounts[0], {from: admin})
             market.claimOwnership({from: accounts[0]})
             await market.halt({from: accounts[0]})
-            await assertFails(market.createProduct("test_admin_transfer", "test", accounts[3], 1, Currency.USD, 1, {from: accounts[1]}))
-            await assertFails(market.createProduct("test_admin_transfer", "test", accounts[3], 1, Currency.USD, 1, {from: admin}))
+            await assertFails(market.createProduct("test_admin_transfer", "test", accounts[3], 1, Currency.USD, 1, {from: accounts[1]}), "error_halted")
+            await assertFails(market.createProduct("test_admin_transfer", "test", accounts[3], 1, Currency.USD, 1, {from: admin}), "error_halted")
             await market.createProduct("test_admin_transfer", "test", accounts[3], 1, Currency.USD, 1, {from: accounts[0]})
             market.transferOwnership(admin, {from: accounts[0]})
             market.claimOwnership({from: admin})
-            await assertFails(market.resume({from: accounts[0]}))
+            await assertFails(market.resume({from: accounts[0]}), "onlyOwner")
             await market.resume({from: admin})
             await market.createProduct("test_admin_transfer2", "test", accounts[3], 1, Currency.USD, 1, {from: accounts[1]})
         })

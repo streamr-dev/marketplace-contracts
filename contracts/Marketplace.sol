@@ -1,4 +1,5 @@
-pragma solidity ^0.4.22;
+// solhint-disable not-rely-on-time
+pragma solidity 0.4.25;
 
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
@@ -72,7 +73,7 @@ contract Marketplace is Ownable {
 
     address public currencyUpdateAgent;
 
-    constructor(address datacoinAddress, address currencyUpdateAgentAddress) Ownable() public {
+    constructor(address datacoinAddress, address currencyUpdateAgentAddress) public Ownable() {
         _initialize(datacoinAddress, currencyUpdateAgentAddress);
     }
 
@@ -184,26 +185,33 @@ contract Marketplace is Ownable {
         return _isValid(sub);
     }
 
-    /**
-     * Purchases access to this stream for msg.sender.
-     * If the address already has a valid subscription, extends the subscription by the given period.
-     * @dev since v4.0: Notify the seller if the seller implements PurchaseListener interface
-     */
-    function buy(bytes32 productId, uint subscriptionSeconds) public whenNotHalted {
-        (Product storage product, TimeBasedSubscription storage subcr) = _getSubscription(productId, msg.sender);
+
+
+    function buyFor(bytes32 productId, uint subscriptionSeconds, address recipient)  public whenNotHalted {
+        (Product storage product, TimeBasedSubscription storage subcr) = _getSubscription(productId, recipient);
         require(product.state == ProductState.Deployed, "error_notDeployed");
-        _addSubscription(product, msg.sender, subscriptionSeconds, subcr);
+        _addSubscription(product, recipient, subscriptionSeconds, subcr);
 
         uint price = getPriceInData(subscriptionSeconds, product.pricePerSecond, product.priceCurrency);
         require(datacoin.transferFrom(msg.sender, product.beneficiary, price), "error_paymentFailed");
 
         uint256 codeSize;
         address addr = product.beneficiary;
-        assembly { codeSize := extcodesize(addr) }
+        assembly { codeSize := extcodesize(addr) }  // solhint-disable-line no-inline-assembly
         if (codeSize > 0) {
-            require(PurchaseListener(product.beneficiary).onPurchase(productId, msg.sender, subcr.endTimestamp, price));
+            require(PurchaseListener(product.beneficiary).onPurchase(productId, recipient, subcr.endTimestamp, price));
         }
     }
+
+     /**
+     * Purchases access to this stream for msg.sender.
+     * If the address already has a valid subscription, extends the subscription by the given period.
+     * @dev since v4.0: Notify the seller if the seller implements PurchaseListener interface
+     */
+    function buy(bytes32 productId, uint subscriptionSeconds) public whenNotHalted {
+        buyFor(productId,subscriptionSeconds,msg.sender);
+    }
+
 
     /**
     * Transfer a valid subscription from msg.sender to a new address.
