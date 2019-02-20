@@ -49,11 +49,24 @@ function assertEventBySignature(truffleResponse, sig) {
     assert(log, `Event ${sig} expected, hash: ${hash.slice(0, 8)}, got: ${allEventHashes}`)
 }
 
-async function assertFails(promise) {
+/**
+ * Expect given {Promise} to fail
+ * @param {Promise} promise
+ * @param {string} revertReason smart contract revert reason if expecting an EVM failure, otherwise just Error.message
+ */
+async function assertFails(promise, revertReason) {
     let failed = false
     try {
         await promise
     } catch (e) {
+        if (revertReason) {
+            if (e.message.startsWith("VM Exception while processing transaction: revert ")) {
+                const reason = e.message.slice(50)
+                assert.strictEqual(revertReason, reason, "Unexpected revert reason")
+            } else {
+                assert.strictEqual(e.message, reason, "Unexpected error message")
+            }
+        }
         failed = true
     }
     if (!failed) {
