@@ -1,3 +1,4 @@
+// solhint-disable
 pragma solidity ^0.4.24;
 
 // File: contracts/token/interfaces/IERC20Token.sol
