@@ -187,20 +187,29 @@ contract Marketplace is Ownable {
 
 
 
-    function buyFor(bytes32 productId, uint subscriptionSeconds, address recipient)  public whenNotHalted {
+    function _subscribe(bytes32 productId, uint subscriptionSeconds, address recipient, bool requirePayment) internal {
         (Product storage product, TimeBasedSubscription storage subcr) = _getSubscription(productId, recipient);
         require(product.state == ProductState.Deployed, "error_notDeployed");
         _addSubscription(product, recipient, subscriptionSeconds, subcr);
 
-        uint price = getPriceInData(subscriptionSeconds, product.pricePerSecond, product.priceCurrency);
-        require(datacoin.transferFrom(msg.sender, product.beneficiary, price), "error_paymentFailed");
-
+        uint price = 0;
+        if(requirePayment){
+            price = getPriceInData(subscriptionSeconds, product.pricePerSecond, product.priceCurrency);
+            require(datacoin.transferFrom(msg.sender, product.beneficiary, price), "error_paymentFailed");
+        }
         uint256 codeSize;
         address addr = product.beneficiary;
         assembly { codeSize := extcodesize(addr) }  // solhint-disable-line no-inline-assembly
         if (codeSize > 0) {
             require(PurchaseListener(product.beneficiary).onPurchase(productId, recipient, subcr.endTimestamp, price));
         }
+    }
+
+    function grantSubscription(bytes32 productId, uint subscriptionSeconds, address recipient) public whenNotHalted onlyProductOwner(productId){
+        return _subscribe(productId, subscriptionSeconds, recipient, false);
+    }
+    function buyFor(bytes32 productId, uint subscriptionSeconds, address recipient)  public whenNotHalted {
+        return _subscribe(productId, subscriptionSeconds, recipient, true);
     }
 
      /**

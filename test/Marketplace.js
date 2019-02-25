@@ -141,6 +141,18 @@ contract("Marketplace", accounts => {
             await token.approve(market.address, 1000, {from: accounts[1]})
             await market.buy("test_sub", 100, {from: accounts[1]})
         })
+        it("grant fails for non-owner", async () => {
+            await assertFails(market.grantSubscription("test_sub", 100, accounts[5], {from: accounts[5]}));
+        })
+
+        it("grant works for owner", async () => {
+            var productId = "test_sub";
+            const [validBefore, endtimeBefore] = await market.getSubscriptionTo(productId, {from: accounts[5]})
+            market.grantSubscription(productId, 100, accounts[5], {from: accounts[0]})
+            const [validAfter, endtimeAfter] = await market.getSubscriptionTo(productId, {from: accounts[5]})
+            assert(validAfter)
+            assert(endtimeAfter - endtimeBefore > 100 - testToleranceSeconds)
+        })
 
         it("can be extended", async () => {
             const [validBefore, endtimeBefore] = await market.getSubscriptionTo("test_sub", {from: accounts[1]})
