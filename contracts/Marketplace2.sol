@@ -147,7 +147,6 @@ contract Marketplace2 is Ownable, IMarketplace {
         p.priceCurrency = _priceCurrency;
         p.minimumSubscriptionSeconds = _minimumSubscriptionSeconds;
         p.state = _state;
-//        emit ProductCreated(msg.sender, id, name, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds);
         return true;
     }
 
