@@ -303,7 +303,6 @@ contract Marketplace is Ownable, IMarketplace {
      * @dev since v4.0: Notify the seller if the seller implements PurchaseListener interface
      */
     function buy(bytes32 productId, uint subscriptionSeconds) public whenNotHalted {
-        emit SubscriptionImported(productId, msg.sender,123);
         buyFor(productId,subscriptionSeconds, msg.sender);
     }
 
@@ -320,12 +319,13 @@ contract Marketplace is Ownable, IMarketplace {
         uint secondsLeft = sub.endTimestamp.sub(block.timestamp);
         TimeBasedSubscription storage newSub = product.subscriptions[newSubscriber];
         _addSubscription(product, newSubscriber, secondsLeft, newSub);
+        //insert a dummy expired subscription to delete because the previous marketplace is read-only
         product.subscriptions[msg.sender] = TimeBasedSubscription(1);
         emit SubscriptionTransferred(productId, msg.sender, newSubscriber, secondsLeft);
     }
 
     /**
-    gets subscriptions info for this
+        gets subscriptions info from the subscriptions stored in this contract
      */
     function _getSubscriptionLocal(bytes32 productId, address subscriber) internal view returns (Product storage p, TimeBasedSubscription storage s) {
         p = products[productId];
