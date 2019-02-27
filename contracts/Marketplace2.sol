@@ -29,13 +29,9 @@ contract IMarketplace {
  *  Seconds are integers as usual.
  *
  * Next version TODO:
- *  1. Bancor integration
  *  - EIP-165 inferface definition; PurchaseListener
- *  - struct creation should use named arguments: Product({id: id, ... })
- *  - buyFor: buy could specify who gets to subscription (without transferSubscription)
- *  - grantSubscription: product owner could give a subscription to X
  */
-contract Marketplace2 is Ownable, IMarketplace {
+contract Marketplace is Ownable, IMarketplace {
     using SafeMath for uint256;
 
     // product events
@@ -147,6 +143,7 @@ contract Marketplace2 is Ownable, IMarketplace {
         p.priceCurrency = _priceCurrency;
         p.minimumSubscriptionSeconds = _minimumSubscriptionSeconds;
         p.state = _state;
+        emit ProductImported(p.owner, p.id, p.name, p.beneficiary, p.pricePerSecond, p.priceCurrency, p.minimumSubscriptionSeconds);
         return true;
     }
 
@@ -167,8 +164,8 @@ contract Marketplace2 is Ownable, IMarketplace {
         }
         (, uint _endTimestamp) = prev_marketplace.getSubscription(productId, subscriber);
         if (_endTimestamp == 0x0) { return false; }
-
         product.subscriptions[subscriber] = TimeBasedSubscription(_endTimestamp);
+        emit SubscriptionImported(productId, subscriber, _endTimestamp);
         return true;
     }
 
@@ -179,7 +176,8 @@ contract Marketplace2 is Ownable, IMarketplace {
         (,address _owner,,,,,) = getProduct(id);
         require(_owner == 0x0, "error_alreadyExists");
         Product storage p = products[id];
-        products[id] = Product(id, name, msg.sender, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, ProductState.Deployed, 0);
+        products[id] = Product({id: id, name: name, owner: msg.sender, beneficiary: beneficiary, pricePerSecond: pricePerSecond, 
+            priceCurrency: currency, minimumSubscriptionSeconds: minimumSubscriptionSeconds, state: ProductState.Deployed, newOwnerCandidate: 0});
         emit ProductCreated(msg.sender, id, name, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds);
     }
 
