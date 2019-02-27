@@ -243,17 +243,15 @@ contract Marketplace is Ownable, IMarketplace {
 
     function getSubscription(bytes32 productId, address subscriber) public view returns (bool isValid, uint endTimestamp) {
         (,address _owner,,,,,) = _getProductLocal(productId);
-        if(_owner != 0x0){
-            (, TimeBasedSubscription storage sub) = _getSubscriptionLocal(productId, subscriber);
-            if(sub.endTimestamp == 0x0){
-                // only call prev_marketplace.getSubscription() if product exists in previous marketplace too
-                (,address _owner_prev,,,,,) = prev_marketplace.getProduct(productId);
-                if(_owner_prev != 0x0)
-                    return prev_marketplace.getSubscription(productId,subscriber);
-            }
-            return (_isValid(sub), sub.endTimestamp);
+        if(_owner == 0x0){ return prev_marketplace.getSubscription(productId,subscriber);}
+        (, TimeBasedSubscription storage sub) = _getSubscriptionLocal(productId, subscriber);
+        if(sub.endTimestamp == 0x0){
+            // only call prev_marketplace.getSubscription() if product exists in previous marketplace too
+            (,address _owner_prev,,,,,) = prev_marketplace.getProduct(productId);
+            if(_owner_prev != 0x0)
+                return prev_marketplace.getSubscription(productId,subscriber);
         }
-        return prev_marketplace.getSubscription(productId,subscriber);
+        return (_isValid(sub), sub.endTimestamp);
     }
 
     function getSubscriptionTo(bytes32 productId) public view returns (bool isValid, uint endTimestamp) {
