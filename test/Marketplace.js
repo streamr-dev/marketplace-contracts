@@ -1,4 +1,4 @@
-const Marketplace = artifacts.require("./deployed/Marketplace-20180425-0xa10151d088f6f2705a05d6c83719e99e079a61c1.sol")
+const Marketplace = artifacts.require("./Marketplace_20180425.sol")
 const Marketplace2 = artifacts.require("./Marketplace.sol")
 const MockCommunity = artifacts.require("./MockCommunity.sol")
 const ERC20Mintable = artifacts.require("zeppelin-solidity/contracts/token/ERC20/ERC20Mintable.sol")

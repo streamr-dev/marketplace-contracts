@@ -8,7 +8,7 @@ const { Marketplace: { Currency } } = require("../src/contracts/enums")
 
 describe("Marketplace", () => {
     it("can createProduct and buy also outside Truffle", async () => {
-        const MarketplaceJson_prev = require("../build/contracts/deployed/Marketplace-20180425-0xa10151d088f6f2705a05d6c83719e99e079a61c1.sol")
+        const MarketplaceJson_prev = require("../build/contracts/Marketplace_20180425.json")
         const MarketplaceJson = require("../build/contracts/Marketplace.json")
         const TokenJson = require("../build/contracts/ERC20Mintable.json")
         const Marketplace_prev = new w3.eth.Contract(MarketplaceJson_prev.abi)
@@ -20,10 +20,10 @@ describe("Marketplace", () => {
             .deploy({data: TokenJson.bytecode})
             .send({from: accounts[0], gas: 4000000})
         const market_prev = await Marketplace_prev
-            .deploy({data: MarketplaceJson.bytecode, arguments: [token.options.address, accounts[8]]})
+            .deploy({data: MarketplaceJson_prev.bytecode, arguments: [token.options.address, accounts[8]]})
             .send({from: accounts[0], gas: 6000000})
         const market = await Marketplace
-            .deploy({data: MarketplaceJson.bytecode, arguments: [token.options.address, accounts[8], market_prev.address]})
+            .deploy({data: MarketplaceJson.bytecode, arguments: [token.options.address, accounts[8], market_prev.options.address]})
             .send({from: accounts[0], gas: 6000000})
 
         const productId = "test-e2e"
