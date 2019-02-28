@@ -97,7 +97,7 @@ contract Marketplace is Ownable, IMarketplace {
     function getProduct(bytes32 id) public view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state) {
         (name, owner, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, state) = _getProductLocal(id);
         if (owner != 0x0)
-            return;
+            return (name, owner, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, state);
         return prev_marketplace.getProduct(id);
     }
 
