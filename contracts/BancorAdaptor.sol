@@ -37,7 +37,7 @@ contract BancorAdaptor {
 	/**
 	* @return price per second of product in DATA, or reverts() if none found
 	*/
-    function _getPricePerSecond(Marketplace mkt, bytes32 productId) internal returns (uint) {
+    function _getPricePerSecond(Marketplace mkt, bytes32 productId) internal view returns (uint) {
         (, address owner,, uint pricePerSecond, Marketplace.Currency priceCurrency,,) = mkt.getProduct(productId);
         require(owner != 0x0, "not found");
         return mkt.getPriceInData(1, pricePerSecond, priceCurrency);

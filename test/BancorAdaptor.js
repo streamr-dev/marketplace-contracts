@@ -1,3 +1,4 @@
+const Marketplace_prev = artifacts.require("./Marketplace_20180425.sol")
 const Marketplace = artifacts.require("./Marketplace.sol")
 const BancorAdaptor = artifacts.require("./BancorAdaptor.sol")
 const ERC20Mintable = artifacts.require("zeppelin-solidity/contracts/token/ERC20/ERC20Mintable.sol")
@@ -27,7 +28,8 @@ contract("BancorAdaptor", accounts => {
         bancorConverter = await MockBancorConverter.new({ from: creator })
         fromToken = await ERC20Mintable.new({ from: creator })
         dataToken = await ERC20Mintable.new({ from: creator })
-        market = await Marketplace.new(dataToken.address, currencyUpdateAgent, { from: creator })
+        market_prev = await Marketplace_prev.new(dataToken.address, currencyUpdateAgent, { from: creator })
+        market = await Marketplace.new(dataToken.address, currencyUpdateAgent, market_prev.address, { from: creator })
         bancorAdaptor = await BancorAdaptor.new(market.address, bancorConverter.address, dataToken.address, { from: creator })
 
         // function createProduct(bytes32 id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds) public whenNotHalted
