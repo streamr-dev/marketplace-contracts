@@ -26,6 +26,9 @@ describe("Marketplace", () => {
             .deploy({data: MarketplaceJson.bytecode, arguments: [token.options.address, accounts[8], market_prev.options.address]})
             .send({from: accounts[0], gas: 6700000})
 
+       // w3.eth.getBlock("latest").then((block) => {console.log("gasLimit: " + block.gasLimit)});
+        
+
         const productId = "test-e2e"
         const productIdHex = w3.utils.utf8ToHex(productId)
         await market.methods.createProduct(productIdHex, "End-to-end tester", accounts[3], 1, Currency.DATA, 1)
