@@ -145,14 +145,17 @@ contract("Marketplace2", accounts => {
     describe("Whitelist", () => {
         //product created in 1, subcription bought in 1
         const productId = "test_wl"
+        const productId2 = "test_wl2"
+        
         before(async () => {
             await market2.createProductWhitelist(productId, "test", accounts[3], 1, Currency.DATA, 1,true, { from: accounts[0] })
+            await market2.createProduct(productId2, "test", accounts[3], 1, Currency.DATA, 1, { from: accounts[0] })
             await token.approve(market2.address, 1000, { from: accounts[2] })
         })
         it("purchase rejected if not on whitelist", async () => {
             await assertFails(market2.buy(productId, 123, { from: accounts[2] }))
         })
-        it("non-onwer cant approve whitelist", async () => {
+        it("non-owner cant approve whitelist", async () => {
             await assertFails(market2.whitelistApprove(productId, accounts[2], { from: accounts[2] }))
         })
         it("owner can approve whitelist and buyer can buy", async () => {
@@ -176,6 +179,55 @@ contract("Marketplace2", accounts => {
             })
             await token.approve(market2.address, 1000, { from: buyer })
             await assertFails(market2.buy(productId, 100, { from: buyer }))
+            await token.approve(market2.address, 0, { from: buyer })
+        })
+        it("whitelist request works", async () => {
+            const buyer=accounts[5];
+            const res = await market2.whitelistRequest(productId, { from: buyer})
+            assertEvent(res, "WhitelistRequested", {
+                subscriber: buyer
+            })
+            //should fail if already on whitelist
+            await assertFails(market2.whitelistRequest(productId, { from: buyer}))
+            await token.approve(market2.address, 1000, { from: buyer })
+            await assertFails(market2.buy(productId, 100, { from: buyer }))
+            await token.approve(market2.address, 0, { from: buyer })
+        })
+
+        it("can activate and deactivate whitelist feature", async () => {
+            const buyer=accounts[2]
+            await assertFails(market2.whitelistRequest(productId2, { from: buyer}))
+            const res = await market2.setRequiresWhitelist(productId2, true, {from: accounts[0]} )
+            assertEvent(res, "WhitelistEnabled", {
+                productId: productId2
+            })
+
+            const res2= await market2.whitelistRequest(productId2, { from: buyer})
+            assertEvent(res2, "WhitelistRequested", {
+                subscriber: buyer
+            })
+            await assertFails(market2.buy(productId2, 100, { from: buyer }))
+            const res3=await market2.whitelistApprove(productId2, buyer, { from: accounts[0]})
+            assertEvent(res3, "WhitelistApproved", {
+                subscriber: buyer
+            })
+            const res4= await market2.buy(productId2, 100, { from: buyer })
+            assertEvent(res4, "NewSubscription", {
+                subscriber: buyer,
+            })
+
+            const res5 = await market2.setRequiresWhitelist(productId2, false, {from: accounts[0]} )
+            assertEvent(res5, "WhitelistDisabled", {
+                productId: productId2
+            })
+            //now whitelist should be disabled
+            await token.approve(market2.address, 1000, { from: accounts[4] })
+
+            const res6= await market2.buy(productId2, 100, { from: accounts[4] })
+            assertEvent(res6, "NewSubscription", {
+                subscriber: accounts[4]
+            })
+
         })
 
 

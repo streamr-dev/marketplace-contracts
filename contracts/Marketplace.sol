@@ -62,7 +62,7 @@ contract Marketplace is Ownable, IMarketplace {
     event ExchangeRatesUpdated(uint timestamp, uint dataInUsd);
 
     // whitelist events
-    event WhitelistSubmitted(bytes32 indexed productId, address indexed subscriber);
+    event WhitelistRequested(bytes32 indexed productId, address indexed subscriber);
     event WhitelistApproved(bytes32 indexed productId, address indexed subscriber);
     event WhitelistRejected(bytes32 indexed productId, address indexed subscriber);
     event WhitelistEnabled(bytes32 indexed productId);
@@ -187,7 +187,10 @@ contract Marketplace is Ownable, IMarketplace {
         return true;
     }
 
-
+    /*
+    createProductWhitelist is createProduct with extra whitelist arg. truffle test doesn't like 2 functions named createProduct,
+    although 2 functions with differing numbers of args is valid Solidity 
+    */
     function createProductWhitelist(bytes32 id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, bool requiresWhitelist) public whenNotHalted {
         require(id != 0x0, "error_nullProductId");
         require(pricePerSecond > 0, "error_freeProductsNotSupported");
@@ -342,8 +345,6 @@ contract Marketplace is Ownable, IMarketplace {
     }
 
 
-
-
     /**
         gets subscriptions info from the subscriptions stored in this contract
      */
@@ -457,24 +458,23 @@ contract Marketplace is Ownable, IMarketplace {
         emit WhitelistRejected(productId,subscriber);
     }
 
-    function whitelistSubmit(bytes32 productId) public {
+    function whitelistRequest(bytes32 productId) public {
         _importProductIfNeeded(productId);
         Product storage p = products[productId];
         require(p.id != 0x0, "Product not found");
         require(p.requiresWhitelist, "Whitelist not enabled");
         require(p.whitelist[msg.sender] == WhitelistState.None, "Whitelist request already submitted");
         p.whitelist[msg.sender] = WhitelistState.Pending;
-        emit WhitelistSubmitted(productId,msg.sender);
+        emit WhitelistRequested(productId,msg.sender);
     }
-
-/*
+    /*
+    // Do we need a getter like this?
     function getWhitelistStatus(bytes32 productId, address subscriber) public view returns (WhitelistStatus wlstatus) {
-        _importProductIfNeeded(productId);
+        (,address _owner,,,,,) = getProduct(productId);
+        require(_owner != 0x0, "error_notFound");
+        //if it's not local this will return 0, which is WhitelistStatus.None
         Product storage p = products[productId];
-        require(p.id != 0x0, "Product not found");
-
+        return p.whitelist[subscriber];
     }
     */
-
-
 }
