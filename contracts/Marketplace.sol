@@ -25,7 +25,7 @@ contract IMarketplace {
         Approved,
         Rejected
     }
-
+    
     function getProduct(bytes32 id) public view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state) {}
     function getSubscription(bytes32 productId, address subscriber) public view returns (bool isValid, uint endTimestamp) {}
 }
@@ -67,6 +67,7 @@ contract Marketplace is Ownable, IMarketplace {
     event WhitelistRejected(bytes32 indexed productId, address indexed subscriber);
     event WhitelistEnabled(bytes32 indexed productId);
     event WhitelistDisabled(bytes32 indexed productId);
+    
     
 
     struct Product {
@@ -467,14 +468,16 @@ contract Marketplace is Ownable, IMarketplace {
         p.whitelist[msg.sender] = WhitelistState.Pending;
         emit WhitelistRequested(productId,msg.sender);
     }
-    /*
+
     // Do we need a getter like this?
-    function getWhitelistStatus(bytes32 productId, address subscriber) public view returns (WhitelistStatus wlstatus) {
+    /*
+    function getWhitelistState(bytes32 productId, address subscriber) public view returns (WhitelistState wlstate) {
         (,address _owner,,,,,) = getProduct(productId);
         require(_owner != 0x0, "error_notFound");
-        //if it's not local this will return 0, which is WhitelistStatus.None
+        //if it's not local this will return 0, which is WhitelistState.None
         Product storage p = products[productId];
         return p.whitelist[subscriber];
     }
     */
+
 }
