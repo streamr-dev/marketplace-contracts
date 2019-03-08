@@ -21,6 +21,9 @@ contract IMarketplace {
 
     function getProduct(bytes32 id) public view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state) {}
     function getSubscription(bytes32 productId, address subscriber) public view returns (bool isValid, uint endTimestamp) {}
+    function getPriceInData(uint subscriptionSeconds, uint price, Currency unit) public view returns (uint datacoinAmount) {}
+    function buyFor(bytes32 productId, uint subscriptionSeconds, address recipient) public {}
+
 }
 
 /**
