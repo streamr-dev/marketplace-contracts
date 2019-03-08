@@ -30,6 +30,7 @@ contract MockUniswapExchange is IUniswapExchange {
     }
     function ethToTokenTransferInput(uint256 min_tokens,uint deadline,address recipient) public payable returns (uint256) {
         uint256 purchased_tokens = msg.value;
+        require(purchased_tokens >= min_tokens,"couldnt get min_tokens");
         require(output_token.transfer(msg.sender,purchased_tokens),"couldnt buy token");
         return purchased_tokens;
     }
@@ -39,6 +40,7 @@ contract MockUniswapExchange is IUniswapExchange {
         require(input_token.transferFrom(msg.sender,address(this),tokens_sold),"couldnt transfer input token");
 
         uint256 purchased_tokens = tokens_sold;
+        require(purchased_tokens >= min_tokens_bought,"couldnt get min_tokens_bought");
         require(output_token.transfer(msg.sender,purchased_tokens),"couldnt buy token");
         return purchased_tokens;
     }

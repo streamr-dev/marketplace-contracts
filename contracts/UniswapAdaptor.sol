@@ -81,8 +81,10 @@ contract UniswapAdaptor {
         }
         IERC20Token fromToken = IERC20Token(erc20_address);
         require(fromToken.transferFrom(msg.sender,address(this),amount), "must pre approve token transfer");
+        // use the exchange of the received token. this exchange will query its factory to find
+        // the DATAcoin exchange in tokenToTokenTransferInput() in _buyWithUniswap()
         address exadd = uniswap_factory.getExchange(erc20_address);
-        require(exadd != 0x0, "couldnt find exchange for exachanged token");
+        require(exadd != 0x0, "couldnt find exchange for exchanged token");
         require(fromToken.approve(exadd, 0), "approval failed");
         require(fromToken.approve(exadd, amount), "approval failed");
         _buyWithUniswap(exadd, productId, minSubscriptionSeconds, timeWindow, pricePerSecondData, amount, erc20_address);
