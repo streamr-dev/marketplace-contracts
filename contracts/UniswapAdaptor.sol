@@ -117,7 +117,7 @@ contract UniswapAdaptor {
             received_datacoin = ex.ethToTokenTransferInput.value(amount)(price,now + timeWindow, address(this));
         }
         else{
-            received_datacoin = ex.tokenToTokenTransferInput(amount, price, 0, now + timeWindow, address(this), address(datacoin));
+            received_datacoin = ex.tokenToTokenTransferInput(amount, price, 1, now + timeWindow, address(this), address(datacoin));
         }
         require(datacoin.balanceOf(address(this)) - datacoin_before_transfer >= received_datacoin, "not enough datacoin received");
         require(datacoin.approve(address(marketplace),0),"approval failed");
