@@ -20,7 +20,7 @@ import "../Ownable.sol";
  *  - buyFor: buy could specify who gets to subscription (without transferSubscription)
  *  - grantSubscription: product owner could give a subscription to X
  */
-contract Marketplace_20180425 is Ownable {
+contract Marketplace20180425 is Ownable {
     using SafeMath for uint256;
 
     // product events
@@ -193,7 +193,7 @@ contract Marketplace_20180425 is Ownable {
         _addSubscription(product, recipient, subscriptionSeconds, subcr);
 
         uint price = 0;
-        if(requirePayment){
+        if (requirePayment) {
             price = getPriceInData(subscriptionSeconds, product.pricePerSecond, product.priceCurrency);
             require(datacoin.transferFrom(msg.sender, product.beneficiary, price), "error_paymentFailed");
         }
@@ -205,7 +205,7 @@ contract Marketplace_20180425 is Ownable {
         }
     }
 
-    function grantSubscription(bytes32 productId, uint subscriptionSeconds, address recipient) public whenNotHalted onlyProductOwner(productId){
+    function grantSubscription(bytes32 productId, uint subscriptionSeconds, address recipient) public whenNotHalted onlyProductOwner(productId) {
         return _subscribe(productId, subscriptionSeconds, recipient, false);
     }
     function buyFor(bytes32 productId, uint subscriptionSeconds, address recipient)  public whenNotHalted {
@@ -218,7 +218,7 @@ contract Marketplace_20180425 is Ownable {
      * @dev since v4.0: Notify the seller if the seller implements PurchaseListener interface
      */
     function buy(bytes32 productId, uint subscriptionSeconds) public whenNotHalted {
-        buyFor(productId,subscriptionSeconds,msg.sender);
+        buyFor(productId, subscriptionSeconds, msg.sender);
     }
 
 
