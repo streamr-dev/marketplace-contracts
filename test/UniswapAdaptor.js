@@ -12,14 +12,12 @@ const { Marketplace: { ProductState, Currency } } = require("../src/contracts/en
 
 const { assertEvent, assertEqual, assertFails, assertEventBySignature, now } = require("./testHelpers")
 
-const paths = require("../currencydata")
-const bancor = require("../src/bancor")
 
 //from https://github.com/Uniswap/contracts-vyper
-const uniswap_exchange_abi = JSON.parse(fs.readFileSync('./build/abi/uniswap_exchange.json', 'utf-8'));
-const uniswap_factory_abi = JSON.parse(fs.readFileSync('./build/abi/uniswap_factory.json', 'utf-8'));
-const uniswap_exchange_bytecode = fs.readFileSync('./build/bytecode/uniswap_exchange.txt', 'utf-8');
-const uniswap_factory_bytecode = fs.readFileSync('./build/bytecode/uniswap_factory.txt', 'utf-8');
+const uniswap_exchange_abi = JSON.parse(fs.readFileSync('./contracts/abi/uniswap_exchange.json', 'utf-8'));
+const uniswap_factory_abi = JSON.parse(fs.readFileSync('./contracts/abi/uniswap_factory.json', 'utf-8'));
+const uniswap_exchange_bytecode = fs.readFileSync('./contracts/bytecode/uniswap_exchange.txt', 'utf-8');
+const uniswap_factory_bytecode = fs.readFileSync('./contracts/bytecode/uniswap_factory.txt', 'utf-8');
 
 const UniswapFactory = new w3.eth.Contract(uniswap_factory_abi, null, { data: uniswap_factory_bytecode });
 const UniswapExchange = new w3.eth.Contract(uniswap_exchange_abi, null, { data: uniswap_exchange_bytecode });
