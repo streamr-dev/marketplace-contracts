@@ -1,4 +1,4 @@
-const Marketplace_prev = artifacts.require("./Marketplace_20180425.sol")
+const Marketplace_prev = artifacts.require("./Marketplace20180425.sol")
 const Marketplace = artifacts.require("./Marketplace.sol")
 const BancorAdaptor = artifacts.require("./BancorAdaptor.sol")
 const ERC20Mintable = artifacts.require("zeppelin-solidity/contracts/token/ERC20/ERC20Mintable.sol")
@@ -8,9 +8,6 @@ const Web3 = require("web3")
 const w3 = new Web3(web3.currentProvider)
 
 const { assertEvent, assertEqual, assertFails, assertEventBySignature, now } = require("./testHelpers")
-
-const paths = require("../currencydata")
-const bancor = require("../src/bancor")
 
 contract("BancorAdaptor", accounts => {
     let market
