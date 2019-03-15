@@ -46,16 +46,14 @@ contract BancorAdaptor {
     function _buyUsingBancor(bytes32 productId, IERC20Token[] bancor_conversion_path, uint minSubscriptionSeconds, uint amount, uint pricePerSecond, bool isEth) internal {
         require(bancor_conversion_path[bancor_conversion_path.length - 1] == datacoin_address, "must convert to DATAcoin");
         require(pricePerSecond > 0, "buyUsingBancor requires pricePerSecond > 0");
-
         uint min_datacoin = pricePerSecond.mul(minSubscriptionSeconds);
-
         IBancorConverter conv = IBancorConverter(bancor_converter_address);
+        IERC20Token datacoin = IERC20Token(datacoin_address);
+        uint256 datacoin_before_transfer = datacoin.balanceOf(address(this));
         //pass the ETH to Bancor, this contract receives datacoin
         uint256 received_datacoin = conv.quickConvert.value(isEth ? amount : 0)(bancor_conversion_path,amount,min_datacoin);
-
-        require(received_datacoin != 0x0, "no datacoin returned");
-
-        IERC20Token datacoin = IERC20Token(datacoin_address);
+        //check the actual balance of DATAcoin received
+        require(datacoin.balanceOf(address(this)) - datacoin_before_transfer >= received_datacoin && received_datacoin >= min_datacoin, "not enough datacoin received");
         require(datacoin.approve(marketplace_address,0),"approval failed");
         require(datacoin.approve(marketplace_address,received_datacoin),"approval failed");
 
