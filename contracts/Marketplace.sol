@@ -469,8 +469,6 @@ contract Marketplace is Ownable, IMarketplace {
         emit WhitelistRequested(productId,msg.sender);
     }
 
-    // Do we need a getter like this?
-    /*
     function getWhitelistState(bytes32 productId, address subscriber) public view returns (WhitelistState wlstate) {
         (,address _owner,,,,,) = getProduct(productId);
         require(_owner != 0x0, "error_notFound");
@@ -478,6 +476,6 @@ contract Marketplace is Ownable, IMarketplace {
         Product storage p = products[productId];
         return p.whitelist[subscriber];
     }
-    */
+    
 
 }
