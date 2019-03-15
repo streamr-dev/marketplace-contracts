@@ -1,4 +1,4 @@
-const Marketplace = artifacts.require("./Marketplace_20180425.sol")
+const Marketplace = artifacts.require("./Marketplace20180425.sol")
 const Marketplace2 = artifacts.require("./Marketplace.sol")
 const MockCommunity = artifacts.require("./MockCommunity.sol")
 const ERC20Mintable = artifacts.require("zeppelin-solidity/contracts/token/ERC20/ERC20Mintable.sol")
@@ -187,7 +187,7 @@ contract("Marketplace2", accounts => {
             await token.approve(market2.address, 1000, { from: accounts[1] })
             const res = await market2.buy(productId1, 100, { from: accounts[1] })
 
-            // test complains about productId not being undefined: 
+            // test complains about productId not being undefined:
             assertEvent(res, "NewSubscription", {
                 //               productId,
                 subscriber: accounts[1],

@@ -2,7 +2,7 @@ var fs = require('fs');
 const Web3 = require("web3")
 const w3 = new Web3(web3.currentProvider)
 
-const Marketplace_prev = artifacts.require("./Marketplace_20180425.sol")
+const Marketplace_prev = artifacts.require("./Marketplace20180425.sol")
 const Marketplace = artifacts.require("./Marketplace.sol")
 const UniswapAdaptor = artifacts.require("./UniswapAdaptor.sol")
 const ERC20Mintable = artifacts.require("zeppelin-solidity/contracts/token/ERC20/ERC20Mintable.sol")
@@ -63,9 +63,9 @@ contract("UniswapAdaptor", accounts => {
         assert(await fromToken.approve(fromtoken_exchange, ftAmount, { from: creator }));
         assert(await dataToken.approve(datatoken_exchange, dtAmount, { from: creator }));
         assert(await dataToken.approve(templateExchange.options.address, dtAmount, { from: creator }));
-        //10 fromToken ~= 1 ETH 
+        //10 fromToken ~= 1 ETH
         await fromTokenUniswapExchange.methods.addLiquidity(w3.utils.toWei("10"), w3.utils.toWei("10"), futureTime).send({ from: creator, gas: 6000000, value: w3.utils.toWei("1") });
-        //1 dataToken ~= 1 ETH 
+        //1 dataToken ~= 1 ETH
         await dataTokenUniswapExchange.methods.addLiquidity(dtAmount, dtAmount, futureTime).send({ from: creator, gas: 6000000, value: dtAmount });
     })
 
@@ -106,7 +106,7 @@ contract("UniswapAdaptor", accounts => {
             assert(validAfter)
             assert(endtimeAfter - endtimeBefore > 10 - testToleranceSeconds)
         })
-        
+
         it("test exchange rates", async () => {
             let amt = 1000.0;
             let ethToData = (await uniswapAdaptor.getConversionRate(dataToken.address, 0x0, amt, {from: buyer}))/amt;
