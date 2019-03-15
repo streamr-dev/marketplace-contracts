@@ -298,7 +298,7 @@ contract Marketplace is Ownable, IMarketplace {
         _importSubscriptionIfNeeded(productId, subscriber);
         (Product storage p, TimeBasedSubscription storage oldSub) = _getSubscriptionLocal(productId, subscriber);
         require(p.state == ProductState.Deployed, "error_notDeployed");
-        require(!p.requiresWhitelist || p.whitelist[subscriber] == WhitelistState.Approved, "Requires whitelist approval");
+        require(!p.requiresWhitelist || p.whitelist[subscriber] == WhitelistState.Approved, "error_whitelistNotAllowed");
         uint endTimestamp;
         if (oldSub.endTimestamp > block.timestamp) {
             require(addSeconds > 0, "error_topUpTooSmall");
@@ -433,7 +433,7 @@ contract Marketplace is Ownable, IMarketplace {
     function setRequiresWhitelist(bytes32 productId, bool _requiresWhitelist) public onlyProductOwner(productId) {
         _importProductIfNeeded(productId);
         Product storage p = products[productId];
-        require(p.id != 0x0, "Product not found");
+        require(p.id != 0x0, "error_notFound");
         p.requiresWhitelist = _requiresWhitelist;
         if(_requiresWhitelist)
             emit WhitelistEnabled(productId);
@@ -444,8 +444,8 @@ contract Marketplace is Ownable, IMarketplace {
     function whitelistApprove(bytes32 productId, address subscriber) public onlyProductOwner(productId) {
         _importProductIfNeeded(productId);
         Product storage p = products[productId];
-        require(p.id != 0x0, "Product not found");
-        require(p.requiresWhitelist, "Whitelist not enabled");
+        require(p.id != 0x0, "error_notFound");
+        require(p.requiresWhitelist, "error_whitelistNotEnabled");
         p.whitelist[subscriber] = WhitelistState.Approved;
         emit WhitelistApproved(productId,subscriber);
     }
@@ -453,8 +453,8 @@ contract Marketplace is Ownable, IMarketplace {
     function whitelistReject(bytes32 productId, address subscriber) public onlyProductOwner(productId) {
         _importProductIfNeeded(productId);
         Product storage p = products[productId];
-        require(p.id != 0x0, "Product not found");
-        require(p.requiresWhitelist, "Whitelist not enabled");
+        require(p.id != 0x0, "error_notFound");
+        require(p.requiresWhitelist, "error_whitelistNotEnabled");
         p.whitelist[subscriber] = WhitelistState.Rejected;
         emit WhitelistRejected(productId,subscriber);
     }
@@ -462,9 +462,9 @@ contract Marketplace is Ownable, IMarketplace {
     function whitelistRequest(bytes32 productId) public {
         _importProductIfNeeded(productId);
         Product storage p = products[productId];
-        require(p.id != 0x0, "Product not found");
-        require(p.requiresWhitelist, "Whitelist not enabled");
-        require(p.whitelist[msg.sender] == WhitelistState.None, "Whitelist request already submitted");
+        require(p.id != 0x0, "error_notFound");
+        require(p.requiresWhitelist, "error_whitelistNotEnabled");
+        require(p.whitelist[msg.sender] == WhitelistState.None, "error_whitelistRequestAlreadySubmitted");
         p.whitelist[msg.sender] = WhitelistState.Pending;
         emit WhitelistRequested(productId,msg.sender);
     }
