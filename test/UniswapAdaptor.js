@@ -41,6 +41,7 @@ contract("UniswapAdaptor", accounts => {
     const day = 86400
 
     before(async () => {
+        //token for testing ERC20 purchase
         fromToken = await ERC20Mintable.new({ from: creator })
         dataToken = await ERC20Mintable.new({ from: creator })
         await dataToken.mint(creator, w3.utils.toWei("100000000"), { from: creator })
@@ -82,8 +83,8 @@ contract("UniswapAdaptor", accounts => {
             await assertFails(uniswapAdaptor.buyWithETH(productId, 20, day, { from: buyer, value: w3.utils.toWei(".01") }))
             await fromToken.approve(uniswapAdaptor.address, 0, { from: buyer })
             //=.001 eth which pays for about 1s
-            let value =  w3.utils.toWei(".01");
-            await fromToken.approve(uniswapAdaptor.address,value, { from: buyer })
+            let value = w3.utils.toWei(".01");
+            await fromToken.approve(uniswapAdaptor.address, value, { from: buyer })
             await assertFails(uniswapAdaptor.buyWithERC20(productId, 9, day, fromToken.address, value, { from: buyer }))
 
         })
@@ -107,6 +108,17 @@ contract("UniswapAdaptor", accounts => {
             assert(validAfter)
             assert(endtimeAfter - endtimeBefore > 10 - testToleranceSeconds)
         })
+        
+        it("test exchange rates", async () => {
+            let amt = 1000.0;
+            let ethToData = (await uniswapAdaptor.getConversionRate(dataToken.address, 0x0, amt, {from: buyer}))/amt;
+            assert(Math.abs(ethToData - 1) < .1);
+            let ethToFt = (await uniswapAdaptor.getConversionRate(0x0, fromToken.address, amt, {from: buyer}))/amt;
+            assert(Math.abs(ethToFt - 10) < 1);
+            let ftToData = (await uniswapAdaptor.getConversionRate(fromToken.address, dataToken.address, amt, {from: buyer}))/amt;
+            assert(Math.abs(ftToData - .1) < .01);
+        })
+
 
     })
 })
