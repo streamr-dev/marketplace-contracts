@@ -39,9 +39,9 @@ contract("Marketplace2", accounts => {
                 currency: Currency.DATA,
                 minimumSubscriptionSeconds: 1,
             })
-            assertEqual(await market2.getProduct(id1), [id1, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed])
+            assertEqual(await market2.getProduct(id1), [id1, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed, false])
 
-            const res2 = await market2.createProduct(id2, id2, accounts[0], 1, Currency.DATA, 1, { from: accounts[0] })
+            const res2 = await market2.createProduct(id2, id2, accounts[0], 1, Currency.DATA, 1, false, { from: accounts[0] })
             assertEvent(res2, "ProductCreated", {
                 owner: accounts[0],
                 id: id2,
@@ -51,11 +51,11 @@ contract("Marketplace2", accounts => {
                 currency: Currency.DATA,
                 minimumSubscriptionSeconds: 1,
             })
-            assertEqual(await market2.getProduct(id2), [id2, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed])
+            assertEqual(await market2.getProduct(id2), [id2, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed, false])
         })
 
         it("will not accept empty product ID", async () => {
-            await assertFails(market2.createProduct("", "test", accounts[0], 1, Currency.DATA, 1, { from: accounts[1] }))
+            await assertFails(market2.createProduct("", "test", accounts[0], 1, Currency.DATA, 1, false, { from: accounts[1] }))
         })
 
         it("can only be deleted/modified by owner", async () => {
@@ -69,9 +69,9 @@ contract("Marketplace2", accounts => {
 
         it("deletes the previously created product", async () => {
             assertEvent(await market2.deleteProduct(id1, { from: accounts[0] }), "ProductDeleted")
-            assertEqual(await market2.getProduct(id1), [id1, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.NotDeployed])
+            assertEqual(await market2.getProduct(id1), [id1, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.NotDeployed, false])
             assertEvent(await market2.deleteProduct(id2, { from: accounts[0] }), "ProductDeleted")
-            assertEqual(await market2.getProduct(id2), [id2, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.NotDeployed])
+            assertEqual(await market2.getProduct(id2), [id2, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.NotDeployed, false])
         })
 
         it("can only be redeployed by owner", async () => {
@@ -82,10 +82,10 @@ contract("Marketplace2", accounts => {
         it("redeploys the previously deleted product", async () => {
             const res = await market2.redeployProduct(id1, { from: accounts[0] })
             assertEvent(res, "ProductRedeployed")
-            assertEqual(await market2.getProduct(id1), [id1, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed])
+            assertEqual(await market2.getProduct(id1), [id1, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed, false])
             const res2 = await market2.redeployProduct(id2, { from: accounts[0] })
             assertEvent(res2, "ProductRedeployed")
-            assertEqual(await market2.getProduct(id2), [id2, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed])
+            assertEqual(await market2.getProduct(id2), [id2, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed, false])
         })
 
         it("allows product be updated", async () => {
@@ -98,7 +98,7 @@ contract("Marketplace2", accounts => {
                 pricePerSecond: 2,
                 minimumSubscriptionSeconds: 2,
             })
-            assertEqual(await market2.getProduct(id1), ["lol", accounts[0], accounts[3], 2, Currency.USD, 2, ProductState.Deployed])
+            assertEqual(await market2.getProduct(id1), ["lol", accounts[0], accounts[3], 2, Currency.USD, 2, ProductState.Deployed, false])
             const res2 = await market2.updateProduct(id2, "lol", accounts[3], 2, Currency.USD, 2, { from: accounts[0] })
             assertEvent(res2, "ProductUpdated", {
                 owner: accounts[0],
@@ -108,7 +108,7 @@ contract("Marketplace2", accounts => {
                 pricePerSecond: 2,
                 minimumSubscriptionSeconds: 2,
             })
-            assertEqual(await market2.getProduct(id2), ["lol", accounts[0], accounts[3], 2, Currency.USD, 2, ProductState.Deployed])
+            assertEqual(await market2.getProduct(id2), ["lol", accounts[0], accounts[3], 2, Currency.USD, 2, ProductState.Deployed, false])
         })
 
         it("allows ownership be transferred", async () => {
@@ -122,7 +122,7 @@ contract("Marketplace2", accounts => {
                 id: id1,
                 oldOwner: accounts[0],
             })
-            assertEqual(await market2.getProduct(id1), ["lol", accounts[1], accounts[3], 2, Currency.USD, 2, ProductState.Deployed])
+            assertEqual(await market2.getProduct(id1), ["lol", accounts[1], accounts[3], 2, Currency.USD, 2, ProductState.Deployed, false])
             assertEvent(await market2.offerProductOwnership(id2, accounts[1], { from: accounts[0] }), "ProductOwnershipOffered", {
                 owner: accounts[0],
                 id: id2,
@@ -133,13 +133,104 @@ contract("Marketplace2", accounts => {
                 id: id2,
                 oldOwner: accounts[0],
             })
-            assertEqual(await market2.getProduct(id2), ["lol", accounts[1], accounts[3], 2, Currency.USD, 2, ProductState.Deployed])
+            assertEqual(await market2.getProduct(id2), ["lol", accounts[1], accounts[3], 2, Currency.USD, 2, ProductState.Deployed, false])
         })
 
         it("claiming fails if not designated as newOwnerCandidate", async () => {
             await assertFails(market2.claimProductOwnership(id1, { from: accounts[1] }))
             await assertFails(market2.claimProductOwnership(id2, { from: accounts[1] }))
         })
+    })
+
+    describe("Whitelist", () => {
+        //product created in 1, subcription bought in 1
+        const productId = "test_wl"
+        const productId2 = "test_wl2"
+        
+        before(async () => {
+            await market2.createProduct(productId, "test", accounts[3], 1, Currency.DATA, 1, true, { from: accounts[0] })
+            await market2.createProduct(productId2, "test", accounts[3], 1, Currency.DATA, 1, false, { from: accounts[0] })
+            await token.approve(market2.address, 1000, { from: accounts[2] })
+        })
+        it("purchase rejected if not on whitelist", async () => {
+            await assertFails(market2.buy(productId, 123, { from: accounts[2] }))
+        })
+        it("non-owner cant approve whitelist", async () => {
+            await assertFails(market2.whitelistApprove(productId, accounts[2], { from: accounts[2] }))
+        })
+        it("owner can approve whitelist and buyer can buy", async () => {
+            const buyer=accounts[2]
+            const res1=await market2.whitelistApprove(productId, buyer, { from: accounts[0]})
+            assertEvent(res1, "WhitelistApproved", {
+                subscriber: buyer
+            })
+            const res2 = await market2.buy(productId, 100, { from: buyer })
+            assertEvent(res2, "NewSubscription", {
+                subscriber: buyer,
+            })
+            assert(await market2.hasValidSubscription(productId, buyer), { from: buyer })
+        })
+
+        it("onwer can reject whitelist and buyer cannot buy", async () => {
+            const buyer=accounts[4];
+            const res = await market2.whitelistReject(productId,buyer , { from: accounts[0]})
+            assertEvent(res, "WhitelistRejected", {
+                subscriber: buyer
+            })
+            await token.approve(market2.address, 1000, { from: buyer })
+            await assertFails(market2.buy(productId, 100, { from: buyer }))
+            await token.approve(market2.address, 0, { from: buyer })
+        })
+        it("whitelist request works", async () => {
+            const buyer=accounts[5];
+            const res = await market2.whitelistRequest(productId, { from: buyer})
+            assertEvent(res, "WhitelistRequested", {
+                subscriber: buyer
+            })
+            //should fail if already on whitelist
+            await assertFails(market2.whitelistRequest(productId, { from: buyer}))
+            await token.approve(market2.address, 1000, { from: buyer })
+            await assertFails(market2.buy(productId, 100, { from: buyer }))
+            await token.approve(market2.address, 0, { from: buyer })
+        })
+
+        it("can activate and deactivate whitelist feature", async () => {
+            const buyer=accounts[2]
+            await assertFails(market2.whitelistRequest(productId2, { from: buyer}))
+            const res = await market2.setRequiresWhitelist(productId2, true, {from: accounts[0]} )
+            assertEvent(res, "WhitelistEnabled", {
+                productId: productId2
+            })
+
+            const res2= await market2.whitelistRequest(productId2, { from: buyer})
+            assertEvent(res2, "WhitelistRequested", {
+                subscriber: buyer
+            })
+            await assertFails(market2.buy(productId2, 100, { from: buyer }))
+            const res3=await market2.whitelistApprove(productId2, buyer, { from: accounts[0]})
+            assertEvent(res3, "WhitelistApproved", {
+                subscriber: buyer
+            })
+            const res4= await market2.buy(productId2, 100, { from: buyer })
+            assertEvent(res4, "NewSubscription", {
+                subscriber: buyer,
+            })
+
+            const res5 = await market2.setRequiresWhitelist(productId2, false, {from: accounts[0]} )
+            assertEvent(res5, "WhitelistDisabled", {
+                productId: productId2
+            })
+            //now whitelist should be disabled
+            await token.approve(market2.address, 1000, { from: accounts[4] })
+
+            const res6= await market2.buy(productId2, 100, { from: accounts[4] })
+            assertEvent(res6, "NewSubscription", {
+                subscriber: accounts[4]
+            })
+
+        })
+
+
     })
 
     describe("Buying products", () => {
@@ -150,7 +241,7 @@ contract("Marketplace2", accounts => {
             productId2 = `test_buy2_${testIndex}`
             testIndex += 1
             await market.createProduct(productId1, productId1, accounts[3], 1, Currency.DATA, 1, { from: accounts[0] })
-            await market2.createProduct(productId2, productId2, accounts[3], 1, Currency.DATA, 1, { from: accounts[0] })
+            await market2.createProduct(productId2, productId2, accounts[3], 1, Currency.DATA, 1, false, { from: accounts[0] })
 
         })
 
@@ -226,7 +317,7 @@ contract("Marketplace2", accounts => {
         before(async () => {
             await market.createProduct(productId1, "test", accounts[3], 1, Currency.DATA, 1, { from: accounts[0] })
             await market.createProduct(productId12, "test", accounts[3], 1, Currency.DATA, 1, { from: accounts[0] })
-            await market2.createProduct(productId2, "test", accounts[3], 1, Currency.DATA, 1, { from: accounts[0] })
+            await market2.createProduct(productId2, "test", accounts[3], 1, Currency.DATA, 1, false, { from: accounts[0] })
             await token.approve(market.address, 1000, { from: accounts[1] })
             await token.approve(market2.address, 1000, { from: accounts[1] })
             await market.buy(productId1, 100, { from: accounts[1] })
@@ -269,28 +360,11 @@ contract("Marketplace2", accounts => {
             testExtension(productId12)
         })
 
-        it("can be transferred", async () => {
-            async function testTransfer(_productId) {
-                const [valid1Before, endtime1Before] = await market2.getSubscription(_productId, accounts[1])
-                const [valid2Before] = await market2.getSubscription(_productId, accounts[2])
-                await market2.transferSubscription(_productId, accounts[2], { from: accounts[1] })
-                const [valid1After] = await market2.getSubscription(_productId, accounts[1])
-                const [valid2After, endtime2After] = await market2.getSubscription(_productId, accounts[2])
-                assert(valid1Before)
-                assert(!valid2Before)
-                assert(!valid1After)
-                assert(valid2After)
-                assert(endtime2After > endtime1Before - testToleranceSeconds)
-            }
-            testTransfer(productId1)
-            testTransfer(productId2)
-            testTransfer(productId12)
-        })
     })
 
     describe("Currency exchange rates", () => {
         before(async () => {
-            await market2.createProduct("test_currencies", "test", accounts[3], 1, Currency.USD, 1, { from: accounts[0] })
+            await market2.createProduct("test_currencies", "test", accounts[3], 1, Currency.USD, 1, false, { from: accounts[0] })
         })
 
         it("can not be set by non-currencyUpdateAgent", async () => {
@@ -328,20 +402,19 @@ contract("Marketplace2", accounts => {
         })
 
         it("can halt product creation and buying except for the owner", async () => {
-            await market2.createProduct("test_admin_halt", "test", accounts[3], 1, Currency.USD, 1, { from: accounts[0] })
+            await market2.createProduct("test_admin_halt", "test", accounts[3], 1, Currency.USD, 1, false, { from: accounts[0] })
             await token.approve(market2.address, 1000, { from: accounts[2] })
             await token.approve(market2.address, 1000, { from: admin })
             await market2.buy("test_admin_halt", 100, { from: accounts[2] })
 
             await market2.halt({ from: admin })
-            await assertFails(market2.createProduct("test_admin_halt2", "test", accounts[3], 1, Currency.USD, 1, { from: accounts[0] }))
+            await assertFails(market2.createProduct("test_admin_halt2", "test", accounts[3], 1, Currency.USD, 1, false, { from: accounts[0] }))
             await assertFails(market2.buy("test_admin_halt", 100, { from: accounts[2] }))
-            await assertFails(market2.transferSubscription("test_admin_halt", accounts[1], { from: accounts[2] }))
-            await market2.createProduct("test_admin_halt3", "test", accounts[3], 1, Currency.USD, 1, { from: admin })
+            await market2.createProduct("test_admin_halt3", "test", accounts[3], 1, Currency.USD, 1, false, { from: admin })
             await market2.buy("test_admin_halt", 100, { from: admin })
 
             await market2.resume({ from: admin })
-            await market2.createProduct("test_admin_halt4", "test", accounts[3], 1, Currency.USD, 1, { from: accounts[0] })
+            await market2.createProduct("test_admin_halt4", "test", accounts[3], 1, Currency.USD, 1, false, { from: accounts[0] })
             await market2.buy("test_admin_halt4", 100, { from: accounts[2] })
         })
 
@@ -354,23 +427,20 @@ contract("Marketplace2", accounts => {
                 await token.approve(market2.address, 1000, { from: accounts[2] })
                 await token.approve(market2.address, 1000, { from: admin })
                 await market2.buy(_productId, 100, { from: accounts[2] })
-                await market2.transferSubscription(_productId, accounts[3], { from: accounts[2] })
 
                 await market2.halt({ from: admin })
                 await market2.offerProductOwnership(_productId, accounts[0], { from: accounts[1] })
                 await assertFails(market2.claimProductOwnership(_productId, { from: accounts[0] }))
-                await assertFails(market2.transferSubscription(_productId, accounts[2], { from: accounts[3] }))
 
                 await market2.resume({ from: admin })
                 await market2.claimProductOwnership(_productId, { from: accounts[0] })
-                await market2.transferSubscription(_productId, accounts[2], { from: accounts[3] })
 
             }
             let productId1 = "test_admin_halt_transfer1";
             let productId2 = "test_admin_halt_transfer2";
 
             await market.createProduct(productId1, "test", accounts[3], 1, Currency.USD, 1, { from: accounts[0] })
-            await market2.createProduct(productId2, "test", accounts[3], 1, Currency.USD, 1, { from: accounts[0] })
+            await market2.createProduct(productId2, "test", accounts[3], 1, Currency.USD, 1, false, { from: accounts[0] })
 
             await testOwnerHalt(productId1)
             await testOwnerHalt(productId2)
@@ -401,7 +471,7 @@ contract("Marketplace2", accounts => {
             const productId1 = "test_admin_control1";
             const productId2 = "test_admin_control2";
             await market.createProduct(productId1, productId1, accounts[3], 1, Currency.USD, 1, { from: accounts[0] })
-            await market2.createProduct(productId2, productId2, accounts[3], 1, Currency.USD, 1, { from: accounts[0] })
+            await market2.createProduct(productId2, productId2, accounts[3], 1, Currency.USD, 1, false, { from: accounts[0] })
 
             await testControl(productId1)
             await testControl(productId2)
@@ -413,14 +483,14 @@ contract("Marketplace2", accounts => {
             market2.transferOwnership(accounts[0], { from: admin })
             market2.claimOwnership({ from: accounts[0] })
             await market2.halt({ from: accounts[0] })
-            await assertFails(market2.createProduct("test_admin_transfer", "test", accounts[3], 1, Currency.USD, 1, { from: accounts[1] }))
-            await assertFails(market2.createProduct("test_admin_transfer", "test", accounts[3], 1, Currency.USD, 1, { from: admin }))
-            await market2.createProduct("test_admin_transfer", "test", accounts[3], 1, Currency.USD, 1, { from: accounts[0] })
+            await assertFails(market2.createProduct("test_admin_transfer", "test", accounts[3], 1, Currency.USD, 1, false, { from: accounts[1] }))
+            await assertFails(market2.createProduct("test_admin_transfer", "test", accounts[3], 1, Currency.USD, 1, false, { from: admin }))
+            await market2.createProduct("test_admin_transfer", "test", accounts[3], 1, Currency.USD, 1, false, { from: accounts[0] })
             market2.transferOwnership(admin, { from: accounts[0] })
             market2.claimOwnership({ from: admin })
             await assertFails(market2.resume({ from: accounts[0] }))
             await market2.resume({ from: admin })
-            await market2.createProduct("test_admin_transfer2", "test", accounts[3], 1, Currency.USD, 1, { from: accounts[1] })
+            await market2.createProduct("test_admin_transfer2", "test", accounts[3], 1, Currency.USD, 1, false, { from: accounts[1] })
         })
     })
 })

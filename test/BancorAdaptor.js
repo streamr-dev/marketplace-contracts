@@ -28,9 +28,7 @@ contract("BancorAdaptor", accounts => {
         market_prev = await Marketplace_prev.new(dataToken.address, currencyUpdateAgent, { from: creator })
         market = await Marketplace.new(dataToken.address, currencyUpdateAgent, market_prev.address, { from: creator })
         bancorAdaptor = await BancorAdaptor.new(market.address, bancorConverter.address, dataToken.address, { from: creator })
-
-        // function createProduct(bytes32 id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds) public whenNotHalted
-        await market.createProduct(productId, "testproduct", streamOwner, w3.utils.toWei("1"), Currency.DATA, 1, { from: streamOwner })
+        await market.createProduct(productId, "testproduct", streamOwner, w3.utils.toWei("1"), Currency.DATA, 1, false, { from: streamOwner })
         await dataToken.mint(bancorConverter.address, w3.utils.toWei("100000000"), { from: creator })
         await fromToken.mint(buyer, w3.utils.toWei("100000000"), { from: creator })
     })

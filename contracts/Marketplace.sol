@@ -19,13 +19,22 @@ contract IMarketplace {
         USD                         // attodollars (10^-18 USD)
     }
 
-    function getProduct(bytes32 id) public view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state) {}
+    enum WhitelistState{
+        None,
+        Pending,
+        Approved,
+        Rejected
+    }
     function getSubscription(bytes32 productId, address subscriber) public view returns (bool isValid, uint endTimestamp) {}
     function getPriceInData(uint subscriptionSeconds, uint price, Currency unit) public view returns (uint datacoinAmount) {}
-    function buyFor(bytes32 productId, uint subscriptionSeconds, address recipient) public {}
-
 }
-
+contract IMarketplace1 is IMarketplace{
+    function getProduct(bytes32 id) public view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state) {}
+}
+contract IMarketplace2 is IMarketplace{   
+    function getProduct(bytes32 id) public view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state, bool requiresWhitelist) {}
+    function buyFor(bytes32 productId, uint subscriptionSeconds, address recipient) public {}
+}
 /**
  * @title Streamr Marketplace
  * @dev note about numbers:
@@ -35,7 +44,7 @@ contract IMarketplace {
  * Next version TODO:
  *  - EIP-165 inferface definition; PurchaseListener
  */
-contract Marketplace is Ownable, IMarketplace {
+contract Marketplace is Ownable, IMarketplace2 {
     using SafeMath for uint256;
 
     // product events
@@ -57,6 +66,15 @@ contract Marketplace is Ownable, IMarketplace {
     // currency events
     event ExchangeRatesUpdated(uint timestamp, uint dataInUsd);
 
+    // whitelist events
+    event WhitelistRequested(bytes32 indexed productId, address indexed subscriber);
+    event WhitelistApproved(bytes32 indexed productId, address indexed subscriber);
+    event WhitelistRejected(bytes32 indexed productId, address indexed subscriber);
+    event WhitelistEnabled(bytes32 indexed productId);
+    event WhitelistDisabled(bytes32 indexed productId);
+    
+    
+
     struct Product {
         bytes32 id;
         string name;
@@ -66,8 +84,10 @@ contract Marketplace is Ownable, IMarketplace {
         Currency priceCurrency;
         uint minimumSubscriptionSeconds;
         ProductState state;
-        mapping(address => TimeBasedSubscription) subscriptions;
         address newOwnerCandidate;  // Two phase hand-over to minimize the chance that the product ownership is lost to a non-existent address.
+        bool requiresWhitelist;
+        mapping(address => TimeBasedSubscription) subscriptions;
+        mapping(address => WhitelistState) whitelist;
     }
 
     struct TimeBasedSubscription {
@@ -79,7 +99,7 @@ contract Marketplace is Ownable, IMarketplace {
     ERC20 public datacoin;
 
     address public currencyUpdateAgent;
-    IMarketplace prev_marketplace;
+    IMarketplace1 prev_marketplace;
 
     constructor(address datacoinAddress, address currencyUpdateAgentAddress, address prev_marketplace_address) Ownable() public {
         _initialize(datacoinAddress, currencyUpdateAgentAddress, prev_marketplace_address);
@@ -88,7 +108,7 @@ contract Marketplace is Ownable, IMarketplace {
     function _initialize(address datacoinAddress, address currencyUpdateAgentAddress, address prev_marketplace_address) internal {
         currencyUpdateAgent = currencyUpdateAgentAddress;
         datacoin = ERC20(datacoinAddress);
-        prev_marketplace = IMarketplace(prev_marketplace_address);
+        prev_marketplace = IMarketplace1(prev_marketplace_address);
     }
 
     ////////////////// Product management /////////////////
@@ -97,33 +117,35 @@ contract Marketplace is Ownable, IMarketplace {
     /*
         checks this marketplace first, then the previous
     */
-    function getProduct(bytes32 id) public view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state) {
-        (name, owner, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, state) = _getProductLocal(id);
+    function getProduct(bytes32 id) public view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state, bool requiresWhitelist) {
+        (name, owner, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, state, requiresWhitelist) = _getProductLocal(id);
         if (owner != 0x0)
-            return (name, owner, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, state);
-        return prev_marketplace.getProduct(id);
+            return (name, owner, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, state, requiresWhitelist);
+        (name, owner, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, state) = prev_marketplace.getProduct(id);
+        return (name, owner, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, state, false);
     }
 
     /**
     checks only this marketplace, not the previous marketplace
      */
 
-    function _getProductLocal(bytes32 id) internal view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state) {
-
+    function _getProductLocal(bytes32 id) internal view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state, bool requiresWhitelist) {
+        Product memory p = products[id];
         return (
-            products[id].name,
-            products[id].owner,
-            products[id].beneficiary,
-            products[id].pricePerSecond,
-            products[id].priceCurrency,
-            products[id].minimumSubscriptionSeconds,
-            products[id].state
+            p.name,
+            p.owner,
+            p.beneficiary,
+            p.pricePerSecond,
+            p.priceCurrency,
+            p.minimumSubscriptionSeconds,
+            p.state,
+            p.requiresWhitelist
         );
     }
 
     // also checks that p exists: p.owner == 0 for non-existent products
     modifier onlyProductOwner(bytes32 productId) {
-        (,address _owner,,,,,) = getProduct(productId);
+        (,address _owner,,,,,,) = getProduct(productId);
         require(_owner != 0x0, "error_notFound");
         require(_owner == msg.sender || owner == msg.sender, "error_productOwnersOnly");
         _;
@@ -136,7 +158,7 @@ contract Marketplace is Ownable, IMarketplace {
         Product storage p = products[productId];
         if(p.id != 0x0)
             return false;
-        (string memory _name, address _owner, address _beneficiary, uint _pricePerSecond, IMarketplace.Currency _priceCurrency, uint _minimumSubscriptionSeconds, IMarketplace.ProductState _state) = prev_marketplace.getProduct(productId);
+        (string memory _name, address _owner, address _beneficiary, uint _pricePerSecond, IMarketplace1.Currency _priceCurrency, uint _minimumSubscriptionSeconds, IMarketplace1.ProductState _state) = prev_marketplace.getProduct(productId);
         if(_owner == 0x0)
             return false;
         p.id = productId;
@@ -173,15 +195,14 @@ contract Marketplace is Ownable, IMarketplace {
         return true;
     }
 
-
-    function createProduct(bytes32 id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds) public whenNotHalted {
+    function createProduct(bytes32 id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, bool requiresWhitelist) public whenNotHalted {
         require(id != 0x0, "error_nullProductId");
         require(pricePerSecond > 0, "error_freeProductsNotSupported");
-        (,address _owner,,,,,) = getProduct(id);
+        (,address _owner,,,,,,) = getProduct(id);
         require(_owner == 0x0, "error_alreadyExists");
         Product storage p = products[id];
         products[id] = Product({id: id, name: name, owner: msg.sender, beneficiary: beneficiary, pricePerSecond: pricePerSecond, 
-            priceCurrency: currency, minimumSubscriptionSeconds: minimumSubscriptionSeconds, state: ProductState.Deployed, newOwnerCandidate: 0});
+            priceCurrency: currency, minimumSubscriptionSeconds: minimumSubscriptionSeconds, state: ProductState.Deployed, newOwnerCandidate: 0, requiresWhitelist: requiresWhitelist});
         emit ProductCreated(msg.sender, id, name, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds);
     }
 
@@ -245,7 +266,7 @@ contract Marketplace is Ownable, IMarketplace {
     /////////////// Subscription management ///////////////
 
     function getSubscription(bytes32 productId, address subscriber) public view returns (bool isValid, uint endTimestamp) {
-        (,address _owner,,,,,) = _getProductLocal(productId);
+        (,address _owner,,,,,,) = _getProductLocal(productId);
         if(_owner == 0x0){ return prev_marketplace.getSubscription(productId,subscriber);}
         (, TimeBasedSubscription storage sub) = _getSubscriptionLocal(productId, subscriber);
         if(sub.endTimestamp == 0x0){
@@ -271,22 +292,35 @@ contract Marketplace is Ownable, IMarketplace {
     _subscribe invokes _addSubscription, enforces payment rules, triggers PurchaseListener event
      */
 
-    function _subscribe(bytes32 productId, uint subscriptionSeconds, address recipient, bool requirePayment) internal {
-        _importSubscriptionIfNeeded(productId, recipient);
-        (Product storage product, TimeBasedSubscription storage subcr) = _getSubscriptionLocal(productId, recipient);
-        require(product.state == ProductState.Deployed, "error_notDeployed");
-        _addSubscription(product, recipient, subscriptionSeconds, subcr);
-
+    function _subscribe(bytes32 productId, uint addSeconds, address subscriber, bool requirePayment) internal {
+        _importSubscriptionIfNeeded(productId, subscriber);
+        (Product storage p, TimeBasedSubscription storage oldSub) = _getSubscriptionLocal(productId, subscriber);
+        require(p.state == ProductState.Deployed, "error_notDeployed");
+        require(!p.requiresWhitelist || p.whitelist[subscriber] == WhitelistState.Approved, "error_whitelistNotAllowed");
+        uint endTimestamp;
+        if (oldSub.endTimestamp > block.timestamp) {
+            require(addSeconds > 0, "error_topUpTooSmall");
+            endTimestamp = oldSub.endTimestamp.add(addSeconds);
+            oldSub.endTimestamp = endTimestamp;
+            emit SubscriptionExtended(p.id, subscriber, endTimestamp);
+        } else {
+            require(addSeconds >= p.minimumSubscriptionSeconds, "error_newSubscriptionTooSmall");
+            endTimestamp = block.timestamp.add(addSeconds);
+            TimeBasedSubscription memory newSub = TimeBasedSubscription(endTimestamp);
+            p.subscriptions[subscriber] = newSub;
+            emit NewSubscription(p.id, subscriber, endTimestamp);
+        }
+        emit Subscribed(p.id, subscriber, endTimestamp);
         uint price = 0;
         if (requirePayment){
-            price = getPriceInData(subscriptionSeconds, product.pricePerSecond, product.priceCurrency);
-            require(datacoin.transferFrom(msg.sender, product.beneficiary, price), "error_paymentFailed");
+            price = getPriceInData(addSeconds, p.pricePerSecond, p.priceCurrency);
+            require(datacoin.transferFrom(msg.sender, p.beneficiary, price), "error_paymentFailed");
         }
         uint256 codeSize;
-        address addr = product.beneficiary;
+        address addr = p.beneficiary;
         assembly { codeSize := extcodesize(addr) }  // solhint-disable-line no-inline-assembly
         if (codeSize > 0) {
-            require(PurchaseListener(product.beneficiary).onPurchase(productId, recipient, subcr.endTimestamp, price));
+            require(PurchaseListener(p.beneficiary).onPurchase(productId, subscriber, oldSub.endTimestamp, price));
         }
     }
 
@@ -310,23 +344,6 @@ contract Marketplace is Ownable, IMarketplace {
     }
 
 
-
-    /**
-    * Transfer a valid subscription from msg.sender to a new address.
-    * If the address already has a valid subscription, extends the subscription by the msg.sender's remaining period.
-    */
-    function transferSubscription(bytes32 productId, address newSubscriber) public whenNotHalted {
-        _importSubscriptionIfNeeded(productId, msg.sender);
-        (Product storage product, TimeBasedSubscription storage sub) = _getSubscriptionLocal(productId, msg.sender);
-        require(_isValid(sub), "error_subscriptionNotValid");
-        uint secondsLeft = sub.endTimestamp.sub(block.timestamp);
-        TimeBasedSubscription storage newSub = product.subscriptions[newSubscriber];
-        _addSubscription(product, newSubscriber, secondsLeft, newSub);
-        //insert a dummy expired subscription to delete because the previous marketplace is read-only
-        product.subscriptions[msg.sender] = TimeBasedSubscription(1);
-        emit SubscriptionTransferred(productId, msg.sender, newSubscriber, secondsLeft);
-    }
-
     /**
         gets subscriptions info from the subscriptions stored in this contract
      */
@@ -338,23 +355,6 @@ contract Marketplace is Ownable, IMarketplace {
 
     function _isValid(TimeBasedSubscription storage s) internal view returns (bool) {
         return s.endTimestamp >= block.timestamp;
-    }
-
-    function _addSubscription(Product storage p, address subscriber, uint addSeconds, TimeBasedSubscription storage oldSub) internal {
-        uint endTimestamp;
-        if (oldSub.endTimestamp > block.timestamp) {
-            require(addSeconds > 0, "error_topUpTooSmall");
-            endTimestamp = oldSub.endTimestamp.add(addSeconds);
-            oldSub.endTimestamp = endTimestamp;
-            emit SubscriptionExtended(p.id, subscriber, endTimestamp);
-        } else {
-            require(addSeconds >= p.minimumSubscriptionSeconds, "error_newSubscriptionTooSmall");
-            endTimestamp = block.timestamp.add(addSeconds);
-            TimeBasedSubscription memory newSub = TimeBasedSubscription(endTimestamp);
-            p.subscriptions[subscriber] = newSub;
-            emit NewSubscription(p.id, subscriber, endTimestamp);
-        }
-        emit Subscribed(p.id, subscriber, endTimestamp);
     }
 
     // TODO: transfer allowance to another Marketplace contract
@@ -416,4 +416,55 @@ contract Marketplace is Ownable, IMarketplace {
     function reInitialize(address datacoinAddress, address currencyUpdateAgentAddress, address prev_marketplace_address) public onlyOwner {
         _initialize(datacoinAddress, currencyUpdateAgentAddress, prev_marketplace_address);
     }
+
+    //whitelist functionality
+
+    function setRequiresWhitelist(bytes32 productId, bool _requiresWhitelist) public onlyProductOwner(productId) {
+        _importProductIfNeeded(productId);
+        Product storage p = products[productId];
+        require(p.id != 0x0, "error_notFound");
+        p.requiresWhitelist = _requiresWhitelist;
+        if(_requiresWhitelist)
+            emit WhitelistEnabled(productId);
+        else
+            emit WhitelistDisabled(productId);
+    }
+
+    function whitelistApprove(bytes32 productId, address subscriber) public onlyProductOwner(productId) {
+        _importProductIfNeeded(productId);
+        Product storage p = products[productId];
+        require(p.id != 0x0, "error_notFound");
+        require(p.requiresWhitelist, "error_whitelistNotEnabled");
+        p.whitelist[subscriber] = WhitelistState.Approved;
+        emit WhitelistApproved(productId,subscriber);
+    }
+
+    function whitelistReject(bytes32 productId, address subscriber) public onlyProductOwner(productId) {
+        _importProductIfNeeded(productId);
+        Product storage p = products[productId];
+        require(p.id != 0x0, "error_notFound");
+        require(p.requiresWhitelist, "error_whitelistNotEnabled");
+        p.whitelist[subscriber] = WhitelistState.Rejected;
+        emit WhitelistRejected(productId,subscriber);
+    }
+
+    function whitelistRequest(bytes32 productId) public {
+        _importProductIfNeeded(productId);
+        Product storage p = products[productId];
+        require(p.id != 0x0, "error_notFound");
+        require(p.requiresWhitelist, "error_whitelistNotEnabled");
+        require(p.whitelist[msg.sender] == WhitelistState.None, "error_whitelistRequestAlreadySubmitted");
+        p.whitelist[msg.sender] = WhitelistState.Pending;
+        emit WhitelistRequested(productId,msg.sender);
+    }
+
+    function getWhitelistState(bytes32 productId, address subscriber) public view returns (WhitelistState wlstate) {
+        (,address _owner,,,,,,) = getProduct(productId);
+        require(_owner != 0x0, "error_notFound");
+        //if it's not local this will return 0, which is WhitelistState.None
+        Product storage p = products[productId];
+        return p.whitelist[subscriber];
+    }
+    
+
 }

@@ -26,9 +26,12 @@ describe("Marketplace", () => {
             .deploy({data: MarketplaceJson.bytecode, arguments: [token.options.address, accounts[8], market_prev.options.address]})
             .send({from: accounts[0], gas: 6000000})
 
+       // w3.eth.getBlock("latest").then((block) => {console.log("gasLimit: " + block.gasLimit)});
+        
+
         const productId = "test-e2e"
         const productIdHex = w3.utils.utf8ToHex(productId)
-        await market.methods.createProduct(productIdHex, "End-to-end tester", accounts[3], 1, Currency.DATA, 1)
+        await market.methods.createProduct(productIdHex, "End-to-end tester", accounts[3], 1, Currency.DATA, 1, false)
             .send({from: accounts[0], gas: 4000000})
         await token.methods.mint(accounts[1], 100000).send({from: accounts[0], gas: 4000000})
         await token.methods.approve(market.options.address, 10000).send({from: accounts[1], gas: 4000000})
