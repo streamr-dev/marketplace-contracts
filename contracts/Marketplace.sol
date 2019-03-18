@@ -25,14 +25,16 @@ contract IMarketplace {
         Approved,
         Rejected
     }
-    
-    function getProduct(bytes32 id) public view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state) {}
     function getSubscription(bytes32 productId, address subscriber) public view returns (bool isValid, uint endTimestamp) {}
     function getPriceInData(uint subscriptionSeconds, uint price, Currency unit) public view returns (uint datacoinAmount) {}
-    function buyFor(bytes32 productId, uint subscriptionSeconds, address recipient) public {}
-
 }
-
+contract IMarketplace1 is IMarketplace{
+    function getProduct(bytes32 id) public view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state) {}
+}
+contract IMarketplace2 is IMarketplace{   
+    function getProduct(bytes32 id) public view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state, bool requiresWhitelist) {}
+    function buyFor(bytes32 productId, uint subscriptionSeconds, address recipient) public {}
+}
 /**
  * @title Streamr Marketplace
  * @dev note about numbers:
@@ -42,7 +44,7 @@ contract IMarketplace {
  * Next version TODO:
  *  - EIP-165 inferface definition; PurchaseListener
  */
-contract Marketplace is Ownable, IMarketplace {
+contract Marketplace is Ownable, IMarketplace2 {
     using SafeMath for uint256;
 
     // product events
@@ -97,7 +99,7 @@ contract Marketplace is Ownable, IMarketplace {
     ERC20 public datacoin;
 
     address public currencyUpdateAgent;
-    IMarketplace prev_marketplace;
+    IMarketplace1 prev_marketplace;
 
     constructor(address datacoinAddress, address currencyUpdateAgentAddress, address prev_marketplace_address) Ownable() public {
         _initialize(datacoinAddress, currencyUpdateAgentAddress, prev_marketplace_address);
@@ -106,7 +108,7 @@ contract Marketplace is Ownable, IMarketplace {
     function _initialize(address datacoinAddress, address currencyUpdateAgentAddress, address prev_marketplace_address) internal {
         currencyUpdateAgent = currencyUpdateAgentAddress;
         datacoin = ERC20(datacoinAddress);
-        prev_marketplace = IMarketplace(prev_marketplace_address);
+        prev_marketplace = IMarketplace1(prev_marketplace_address);
     }
 
     ////////////////// Product management /////////////////
@@ -115,33 +117,35 @@ contract Marketplace is Ownable, IMarketplace {
     /*
         checks this marketplace first, then the previous
     */
-    function getProduct(bytes32 id) public view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state) {
-        (name, owner, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, state) = _getProductLocal(id);
+    function getProduct(bytes32 id) public view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state, bool requiresWhitelist) {
+        (name, owner, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, state, requiresWhitelist) = _getProductLocal(id);
         if (owner != 0x0)
-            return (name, owner, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, state);
-        return prev_marketplace.getProduct(id);
+            return (name, owner, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, state, requiresWhitelist);
+        (name, owner, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, state) = prev_marketplace.getProduct(id);
+        return (name, owner, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, state, false);
     }
 
     /**
     checks only this marketplace, not the previous marketplace
      */
 
-    function _getProductLocal(bytes32 id) internal view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state) {
-
+    function _getProductLocal(bytes32 id) internal view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state, bool requiresWhitelist) {
+        Product memory p = products[id];
         return (
-            products[id].name,
-            products[id].owner,
-            products[id].beneficiary,
-            products[id].pricePerSecond,
-            products[id].priceCurrency,
-            products[id].minimumSubscriptionSeconds,
-            products[id].state
+            p.name,
+            p.owner,
+            p.beneficiary,
+            p.pricePerSecond,
+            p.priceCurrency,
+            p.minimumSubscriptionSeconds,
+            p.state,
+            p.requiresWhitelist
         );
     }
 
     // also checks that p exists: p.owner == 0 for non-existent products
     modifier onlyProductOwner(bytes32 productId) {
-        (,address _owner,,,,,) = getProduct(productId);
+        (,address _owner,,,,,,) = getProduct(productId);
         require(_owner != 0x0, "error_notFound");
         require(_owner == msg.sender || owner == msg.sender, "error_productOwnersOnly");
         _;
@@ -154,7 +158,7 @@ contract Marketplace is Ownable, IMarketplace {
         Product storage p = products[productId];
         if(p.id != 0x0)
             return false;
-        (string memory _name, address _owner, address _beneficiary, uint _pricePerSecond, IMarketplace.Currency _priceCurrency, uint _minimumSubscriptionSeconds, IMarketplace.ProductState _state) = prev_marketplace.getProduct(productId);
+        (string memory _name, address _owner, address _beneficiary, uint _pricePerSecond, IMarketplace1.Currency _priceCurrency, uint _minimumSubscriptionSeconds, IMarketplace1.ProductState _state) = prev_marketplace.getProduct(productId);
         if(_owner == 0x0)
             return false;
         p.id = productId;
@@ -191,25 +195,16 @@ contract Marketplace is Ownable, IMarketplace {
         return true;
     }
 
-    /*
-    createProductWhitelist is createProduct with extra whitelist arg. truffle test doesn't like 2 functions named createProduct,
-    although 2 functions with differing numbers of args is valid Solidity 
-    */
-    function createProductWhitelist(bytes32 id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, bool requiresWhitelist) public whenNotHalted {
+    function createProduct(bytes32 id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, bool requiresWhitelist) public whenNotHalted {
         require(id != 0x0, "error_nullProductId");
         require(pricePerSecond > 0, "error_freeProductsNotSupported");
-        (,address _owner,,,,,) = getProduct(id);
+        (,address _owner,,,,,,) = getProduct(id);
         require(_owner == 0x0, "error_alreadyExists");
         Product storage p = products[id];
         products[id] = Product({id: id, name: name, owner: msg.sender, beneficiary: beneficiary, pricePerSecond: pricePerSecond, 
             priceCurrency: currency, minimumSubscriptionSeconds: minimumSubscriptionSeconds, state: ProductState.Deployed, newOwnerCandidate: 0, requiresWhitelist: requiresWhitelist});
         emit ProductCreated(msg.sender, id, name, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds);
     }
-    
-    function createProduct(bytes32 id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds) public whenNotHalted {
-        createProductWhitelist(id, name, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds,false);
-    }   
-    
 
     /**
     * Stop offering the product
@@ -271,7 +266,7 @@ contract Marketplace is Ownable, IMarketplace {
     /////////////// Subscription management ///////////////
 
     function getSubscription(bytes32 productId, address subscriber) public view returns (bool isValid, uint endTimestamp) {
-        (,address _owner,,,,,) = _getProductLocal(productId);
+        (,address _owner,,,,,,) = _getProductLocal(productId);
         if(_owner == 0x0){ return prev_marketplace.getSubscription(productId,subscriber);}
         (, TimeBasedSubscription storage sub) = _getSubscriptionLocal(productId, subscriber);
         if(sub.endTimestamp == 0x0){
@@ -424,15 +419,6 @@ contract Marketplace is Ownable, IMarketplace {
 
     //whitelist functionality
 
-    //should the whitelist getter be built into getProduct()?
-    function getRequiresWhitelist(bytes32 productId) public view returns (bool) {
-        (,address _owner,,,,,) = getProduct(productId);
-        require(_owner != 0x0, "error_notFound");
-        //if it's not local this will return 0, which is false
-        Product storage p = products[productId];
-        return p.requiresWhitelist;
-    }
-
     function setRequiresWhitelist(bytes32 productId, bool _requiresWhitelist) public onlyProductOwner(productId) {
         _importProductIfNeeded(productId);
         Product storage p = products[productId];
@@ -473,7 +459,7 @@ contract Marketplace is Ownable, IMarketplace {
     }
 
     function getWhitelistState(bytes32 productId, address subscriber) public view returns (WhitelistState wlstate) {
-        (,address _owner,,,,,) = getProduct(productId);
+        (,address _owner,,,,,,) = getProduct(productId);
         require(_owner != 0x0, "error_notFound");
         //if it's not local this will return 0, which is WhitelistState.None
         Product storage p = products[productId];
