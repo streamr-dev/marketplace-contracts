@@ -1,5 +1,5 @@
 // solhint-disable
-pragma solidity ^0.4.24;
+pragma solidity ^0.4.25;
 
 // File: contracts/token/interfaces/IERC20Token.sol
 
