@@ -204,6 +204,8 @@ contract Marketplace is Ownable, IMarketplace2 {
         products[id] = Product({id: id, name: name, owner: msg.sender, beneficiary: beneficiary, pricePerSecond: pricePerSecond, 
             priceCurrency: currency, minimumSubscriptionSeconds: minimumSubscriptionSeconds, state: ProductState.Deployed, newOwnerCandidate: 0, requiresWhitelist: requiresWhitelist});
         emit ProductCreated(msg.sender, id, name, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds);
+        if(requiresWhitelist)
+            emit WhitelistEnabled(id);
     }
 
     /**
