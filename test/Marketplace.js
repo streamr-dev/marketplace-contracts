@@ -18,7 +18,7 @@ contract("Marketplace2", accounts => {
         await Promise.all(accounts.map(acco => token.mint(acco, 1000000)))
         market = await Marketplace.new(token.address, currencyUpdateAgent, { from: admin })
         market2 = await Marketplace2.new(token.address, currencyUpdateAgent, market.address, { from: admin })
-
+        market2using1api = await Marketplace.at(market2.address)
     })
 
     // function getProduct(bytes32 id) public view
@@ -52,6 +52,10 @@ contract("Marketplace2", accounts => {
                 minimumSubscriptionSeconds: 1,
             })
             assertEqual(await market2.getProduct(id2), [id2, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed, false])
+        })
+
+        it("Marketplace2.getProduct() works using Marketplace1 ABI", async () => {
+            assertEqual(await market2using1api.getProduct(id2), [id2, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed])
         })
 
         it("will not accept empty product ID", async () => {
