@@ -57,7 +57,7 @@ contract("UniswapAdaptor", accounts => {
         market_prev = await Marketplace_prev.new(dataToken.address, currencyUpdateAgent, { from: creator })
         market = await Marketplace.new(dataToken.address, currencyUpdateAgent, market_prev.address, { from: creator })
         uniswapAdaptor = await UniswapAdaptor.new(market.address, uniswapFactory.options.address, dataToken.address, { from: creator })
-        await market.createProduct(productId, "testproduct", streamOwner, w3.utils.toWei(".001"), Currency.DATA, 1, false, { from: streamOwner })
+        await market.createProduct(productId, "testproduct", streamOwner, w3.utils.toWei(".001"), Currency.DATA, 1, { from: streamOwner })
         let dtAmount = w3.utils.toWei("10");
         let ftAmount = w3.utils.toWei("10");
         assert(await fromToken.approve(fromtoken_exchange, ftAmount, { from: creator }));

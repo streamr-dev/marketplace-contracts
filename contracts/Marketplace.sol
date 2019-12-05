@@ -194,8 +194,17 @@ contract Marketplace is Ownable, IMarketplace2 {
         emit SubscriptionImported(productId, subscriber, _endTimestamp);
         return true;
     }
+    function createProduct(bytes32 id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds) public whenNotHalted {
+        _createProduct(id, name, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, false);
+    }
 
-    function createProduct(bytes32 id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, bool requiresWhitelist) public whenNotHalted {
+    function createProductWithWhitelist(bytes32 id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds) public whenNotHalted {
+        _createProduct(id, name, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, true);
+        emit WhitelistEnabled(id);
+    }
+
+
+    function _createProduct(bytes32 id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, bool requiresWhitelist) internal {
         require(id != 0x0, "error_nullProductId");
         require(pricePerSecond > 0, "error_freeProductsNotSupported");
         (,address _owner,,,,,,) = getProduct(id);
