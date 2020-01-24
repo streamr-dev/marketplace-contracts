@@ -22,6 +22,12 @@ const uniswap_factory_bytecode = fs.readFileSync('./contracts/bytecode/uniswap_f
 const UniswapFactory = new w3.eth.Contract(uniswap_factory_abi, null, { data: uniswap_factory_bytecode });
 const UniswapExchange = new w3.eth.Contract(uniswap_exchange_abi, null, { data: uniswap_exchange_bytecode });
 const futureTime = 4449513600;
+
+function absFractionalDifference(ref, val){
+    let diff = Math.abs((ref-val)/ref)
+    //console.log(`diff ${ref} ${val} = ${diff}`)
+    return diff;
+}
 //console.log(uniswap_exchange_abi);
 contract("UniswapAdaptor", accounts => {
     let market
@@ -109,12 +115,20 @@ contract("UniswapAdaptor", accounts => {
 
         it("test exchange rates", async () => {
             let amt = 1000.0;
-            let ethToData = (await uniswapAdaptor.getConversionRate(dataToken.address, 0x0, amt, {from: buyer}))/amt;
-            assert(Math.abs(ethToData - 1) < .1);
-            let ethToFt = (await uniswapAdaptor.getConversionRate(0x0, fromToken.address, amt, {from: buyer}))/amt;
-            assert(Math.abs(ethToFt - 10) < 1);
-            let ftToData = (await uniswapAdaptor.getConversionRate(fromToken.address, dataToken.address, amt, {from: buyer}))/amt;
-            assert(Math.abs(ftToData - .1) < .01);
+            let ethToDataIn = (await uniswapAdaptor.getConversionRateInput(dataToken.address, 0x0, amt, {from: buyer}))/amt;
+            assert(absFractionalDifference(ethToDataIn, 1) < .1);
+            let ethToFtIn = (await uniswapAdaptor.getConversionRateInput(0x0, fromToken.address, amt, {from: buyer}))/amt;
+            assert(absFractionalDifference(ethToFtIn, 10) < .1);
+            let ftToDataIn = (await uniswapAdaptor.getConversionRateInput(fromToken.address, dataToken.address, amt, {from: buyer}))/amt;
+            assert(absFractionalDifference(ftToDataIn, .1) < .1);
+
+            let ethToDataOut = (await uniswapAdaptor.getConversionRateOutput(dataToken.address, 0x0, amt, {from: buyer}))/amt;
+            assert(absFractionalDifference(ethToDataOut, 1) < .1);
+            let ethToFtOut = (await uniswapAdaptor.getConversionRateOutput(0x0, fromToken.address, amt, {from: buyer}))/amt;
+            assert(absFractionalDifference(ethToFtOut, .1) < .1);
+            let ftToDataOut = (await uniswapAdaptor.getConversionRateOutput(fromToken.address, dataToken.address, amt, {from: buyer}))/amt;
+            assert(absFractionalDifference(ftToDataOut, 10) < .1);
+            
         })
 
 
