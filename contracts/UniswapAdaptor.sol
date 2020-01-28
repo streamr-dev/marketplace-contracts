@@ -120,17 +120,18 @@ contract UniswapAdaptor {
         token address 0x0 means ETH
     */
     
-    function getConversionRate(address from_token, address to_token, uint amount) public view returns (uint){
+    //returns the amount to_tokens that would be received from an input_amount of from_tokens
+    function getConversionRateInput(address from_token, address to_token, uint input_amount) public view returns (uint){
         require(from_token != to_token, "must specify different tokens ");
         uint eth_amount;
         if(from_token == 0x0){
-            eth_amount = amount;
+            eth_amount = input_amount;
         }
         else{
             address from_token_exchange = uniswap_factory.getExchange(from_token);
             require(from_token_exchange != 0x0, "couldnt find exchange for from_token");
             IUniswapExchange exfrom = IUniswapExchange(from_token_exchange);
-            eth_amount = exfrom.getTokenToEthInputPrice(amount);
+            eth_amount = exfrom.getTokenToEthInputPrice(input_amount);
         }
         if(to_token == 0x0){
             return eth_amount;
@@ -140,6 +141,30 @@ contract UniswapAdaptor {
             require(to_token_exchange != 0x0, "couldnt find exchange for to_token");
             IUniswapExchange exto = IUniswapExchange(to_token_exchange);
             return exto.getEthToTokenInputPrice(eth_amount);
+        }
+    }
+
+    // returns the amount from_tokens needed to buy output_amount of to_tokens
+    function getConversionRateOutput(address from_token, address to_token, uint output_amount) public view returns (uint){
+        require(from_token != to_token, "must specify different tokens ");
+        uint eth_amount;
+        if(to_token == 0x0){
+            eth_amount = output_amount;
+        }
+        else{
+            address to_token_exchange = uniswap_factory.getExchange(to_token);
+            require(to_token_exchange != 0x0, "couldnt find exchange for to_token");
+            IUniswapExchange exto = IUniswapExchange(to_token_exchange);
+            eth_amount = exto.getEthToTokenOutputPrice(output_amount);
+        }
+        if(from_token == 0x0){
+            return eth_amount;
+        }
+        else{
+            address from_token_exchange = uniswap_factory.getExchange(from_token);
+            require(from_token_exchange != 0x0, "couldnt find exchange for from_token");
+            IUniswapExchange exfrom = IUniswapExchange(from_token_exchange);
+            return exfrom.getTokenToEthOutputPrice(eth_amount);
         }
     }
     
