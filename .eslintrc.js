@@ -35,5 +35,6 @@ module.exports = {
             "objects": "only-multiline",
         }],
         "no-console": "warn",
+        "space-infix-ops": "warn",
     }
 }

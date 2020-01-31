@@ -26,7 +26,7 @@ describe("Marketplace", () => {
             .deploy({data: MarketplaceJson.bytecode, arguments: [token.options.address, accounts[8], market_prev.options.address]})
             .send({from: accounts[0], gas: 6000000})
 
-       // w3.eth.getBlock("latest").then((block) => {console.log("gasLimit: " + block.gasLimit)});
+        // w3.eth.getBlock("latest").then((block) => {console.log("gasLimit: " + block.gasLimit)});
         
 
         const productId = "test-e2e"

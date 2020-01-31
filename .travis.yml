@@ -12,7 +12,7 @@ jobs:
   include:
     - script:
         - "npm run lint"
-      stage: "smart contract lint"
+      stage: "linters"
     - script:
         - "npm run test"
       stage: "smart contract tests"

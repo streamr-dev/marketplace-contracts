@@ -3,14 +3,15 @@ const Marketplace = artifacts.require("./Marketplace.sol")
 const BancorAdaptor = artifacts.require("./BancorAdaptor.sol")
 const ERC20Mintable = artifacts.require("zeppelin-solidity/contracts/token/ERC20/ERC20Mintable.sol")
 const MockBancorConverter = artifacts.require("./MockBancorConverter.sol")
-const { Marketplace: { ProductState, Currency } } = require("../src/contracts/enums")
+const { Marketplace: { Currency } } = require("../src/contracts/enums")
 const Web3 = require("web3")
 const w3 = new Web3(web3.currentProvider)
 
-const { assertEvent, assertEqual, assertFails, assertEventBySignature, now } = require("./testHelpers")
+const { assertEqual, assertFails } = require("./testHelpers")
 
 contract("BancorAdaptor", accounts => {
     let market
+    let market_prev
     let fromToken
     let dataToken
     let bancorConverter
@@ -20,7 +21,7 @@ contract("BancorAdaptor", accounts => {
     const buyer = accounts[2]
     const streamOwner = accounts[3]
     const productId = "0x123"
-    const testToleranceSeconds = 5
+    //const testToleranceSeconds = 5
     before(async () => {
         bancorConverter = await MockBancorConverter.new({ from: creator })
         fromToken = await ERC20Mintable.new({ from: creator })
@@ -41,15 +42,16 @@ contract("BancorAdaptor", accounts => {
         })
 
         it("too many seconds fails", async () => {
-            var path = [fromToken.address, dataToken.address]
+            let path = [fromToken.address, dataToken.address]
             // will return 10 data coin, which pays for 10s
             await assertFails(bancorAdaptor.buyWithETH(productId, path, 11, { from: buyer, value: w3.utils.toWei("10") }), "error_minreturn")
         })
 
         it("can buy product with ETH", async () => {
             // path[0] is ignored when converting from ETH with MockBancorConverter
-            var path = [fromToken.address, dataToken.address]
+            let path = [fromToken.address, dataToken.address]
             const [validBefore, endtimeBefore] = await market.getSubscription(productId, buyer, { from: buyer })
+            validBefore // eslint fix
             await bancorAdaptor.buyWithETH(productId, path, 9, { from: buyer, value: w3.utils.toWei("10") })
             const [validAfter, endtimeAfter] = await market.getSubscription(productId, buyer, { from: buyer })
             assert(validAfter)
@@ -57,9 +59,10 @@ contract("BancorAdaptor", accounts => {
         })
 
         it("can buy product with ERC20", async () => {
-            var path = [fromToken.address, dataToken.address]
+            let path = [fromToken.address, dataToken.address]
             const [validBefore, endtimeBefore] = await market.getSubscription(productId, buyer, { from: buyer })
-            var value = w3.utils.toWei("10")
+            validBefore // eslint fix
+            let value = w3.utils.toWei("10")
             await fromToken.approve(bancorAdaptor.address, value, { from: buyer })
             await bancorAdaptor.buyWithERC20(productId, path, 9, value, { from: buyer })
             const [validAfter, endtimeAfter] = await market.getSubscription(productId, buyer, { from: buyer })
