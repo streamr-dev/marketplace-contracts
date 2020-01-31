@@ -325,12 +325,16 @@ contract Marketplace is Ownable, IMarketplace2 {
             price = getPriceInData(addSeconds, p.pricePerSecond, p.priceCurrency);
             require(datacoin.transferFrom(msg.sender, p.beneficiary, price), "error_paymentFailed");
         }
-        uint256 codeSize;
-        address addr = p.beneficiary;
-        assembly { codeSize := extcodesize(addr) }  // solhint-disable-line no-inline-assembly
-        if (codeSize > 0) {
-            require(PurchaseListener(p.beneficiary).onPurchase(productId, subscriber, oldSub.endTimestamp, price));
-        }
+
+        // Solidity 5:
+        //(bool success, bytes memory returnData) = p.beneficiary.call(abi.encodeWithSignature("onPurchase(bytes32,address,uint256,uint256)", productId, subscriber, oldSub.endTimestamp, price));
+        // TODO: check returnData if onPurchase returned true (accept purchase) or false (reject purchase)
+        // TODO: require(purchaseAccepted, "error_rejectedBySeller")
+
+        // Solidity 4:
+        // 0x91517bdd = keccak256("onPurchase(bytes32,address,uint256,uint256)")
+        // this call returns true if beneficiary is a PurchaseListener, return value is ignored
+        p.beneficiary.call(0x91517bdd, productId, subscriber, oldSub.endTimestamp, price);
     }
 
     function grantSubscription(bytes32 productId, uint subscriptionSeconds, address recipient) public whenNotHalted onlyProductOwner(productId){

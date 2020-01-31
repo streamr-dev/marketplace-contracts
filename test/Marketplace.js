@@ -308,7 +308,26 @@ contract("Marketplace2", accounts => {
             await market2.updateProduct(productId2, "test", listener.address, 1, Currency.DATA, 1, { from: accounts[0] })
             const res2 = await market2.buy(productId2, 100, { from: accounts[1] })
             assertEventBySignature(res2, "PurchaseRegistered()")
+        })
 
+        it("can pay to non-PurchaseListener contracts", async () => {
+            const seller = await Marketplace.new(token.address, currencyUpdateAgent, { from: admin })
+            const balanceBefore = await token.balanceOf(seller.address, {from: accounts[0]})
+            await market2.updateProduct(productId1, "test", seller.address, 1, Currency.DATA, 1, { from: accounts[0] })
+            await market2.buy(productId1, 100, { from: accounts[1] })
+            const balanceAfter = await token.balanceOf(seller.address, {from: accounts[0]})
+            assert.strictEqual(+balanceBefore, 0)
+            assert.strictEqual(+balanceAfter, 100)
+        })
+
+        it("can pay to non-contract addresses", async () => {
+            const sellerAddress = "0x1234567890123456789012345678901234567890"
+            const balanceBefore = await token.balanceOf(sellerAddress, {from: accounts[0]})
+            await market2.updateProduct(productId1, "test", sellerAddress, 1, Currency.DATA, 1, { from: accounts[0] })
+            await market2.buy(productId1, 100, { from: accounts[1] })
+            const balanceAfter = await token.balanceOf(sellerAddress, {from: accounts[0]})
+            assert.strictEqual(+balanceBefore, 0)
+            assert.strictEqual(+balanceAfter, 100)
         })
     })
 
