@@ -1,5 +1,5 @@
 // solhint-disable not-rely-on-time
-pragma solidity ^0.4.25;
+pragma solidity 0.4.25;
 
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
