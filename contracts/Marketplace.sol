@@ -31,7 +31,7 @@ contract IMarketplace {
 contract IMarketplace1 is IMarketplace{
     function getProduct(bytes32 id) public view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state) {}
 }
-contract IMarketplace2 is IMarketplace{   
+contract IMarketplace2 is IMarketplace{
     function getProduct(bytes32 id) public view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state, bool requiresWhitelist) {}
     function buyFor(bytes32 productId, uint subscriptionSeconds, address recipient) public {}
 }
@@ -72,8 +72,8 @@ contract Marketplace is Ownable, IMarketplace2 {
     event WhitelistRejected(bytes32 indexed productId, address indexed subscriber);
     event WhitelistEnabled(bytes32 indexed productId);
     event WhitelistDisabled(bytes32 indexed productId);
-    
-    
+
+
 
     struct Product {
         bytes32 id;
@@ -210,7 +210,7 @@ contract Marketplace is Ownable, IMarketplace2 {
         (,address _owner,,,,,,) = getProduct(id);
         require(_owner == 0x0, "error_alreadyExists");
         Product storage p = products[id];
-        products[id] = Product({id: id, name: name, owner: msg.sender, beneficiary: beneficiary, pricePerSecond: pricePerSecond, 
+        products[id] = Product({id: id, name: name, owner: msg.sender, beneficiary: beneficiary, pricePerSecond: pricePerSecond,
             priceCurrency: currency, minimumSubscriptionSeconds: minimumSubscriptionSeconds, state: ProductState.Deployed, newOwnerCandidate: 0, requiresWhitelist: requiresWhitelist});
         emit ProductCreated(msg.sender, id, name, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds);
     }
@@ -474,6 +474,6 @@ contract Marketplace is Ownable, IMarketplace2 {
         Product storage p = products[productId];
         return p.whitelist[subscriber];
     }
-    
+
 
 }
