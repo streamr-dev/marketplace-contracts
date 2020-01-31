@@ -64,7 +64,7 @@ async function assertFails(promise, revertReason) {
                 const reason = e.message.slice(50)
                 assert.strictEqual(revertReason, reason, "Unexpected revert reason")
             } else {
-                assert.strictEqual(e.message, reason, "Unexpected error message")
+                assert.strictEqual(revertReason, e.message, "Unexpected error message")
             }
         }
         failed = true
