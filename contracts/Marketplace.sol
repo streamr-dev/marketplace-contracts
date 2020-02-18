@@ -73,6 +73,8 @@ contract Marketplace is Ownable, IMarketplace2 {
     event WhitelistEnabled(bytes32 indexed productId);
     event WhitelistDisabled(bytes32 indexed productId);
 
+    //txFee events
+    event TxFeeChanged(uint256 indexed newTxFee);
 
 
     struct Product {
@@ -100,6 +102,7 @@ contract Marketplace is Ownable, IMarketplace2 {
 
     address public currencyUpdateAgent;
     IMarketplace1 prev_marketplace;
+    uint256 public txFee;
 
     constructor(address datacoinAddress, address currencyUpdateAgentAddress, address prev_marketplace_address) Ownable() public {
         _initialize(datacoinAddress, currencyUpdateAgentAddress, prev_marketplace_address);
@@ -324,6 +327,10 @@ contract Marketplace is Ownable, IMarketplace2 {
         if (requirePayment){
             price = getPriceInData(addSeconds, p.pricePerSecond, p.priceCurrency);
             require(datacoin.transferFrom(msg.sender, p.beneficiary, price), "error_paymentFailed");
+            if(price > 0 && txFee > 0){
+                uint256 fee = txFee.mul(price).div(1 ether);
+                require(datacoin.transferFrom(msg.sender, owner, fee), "error_paymentFailed");
+            }
         }
 
         // Solidity 5:
@@ -477,6 +484,13 @@ contract Marketplace is Ownable, IMarketplace2 {
         //if it's not local this will return 0, which is WhitelistState.None
         Product storage p = products[productId];
         return p.whitelist[subscriber];
+    }
+
+    //tx fee
+    function setTxFee(uint256 newTxFee) public onlyOwner {
+        require(newTxFee <= 1 ether, "error_invalidTxFee");
+        txFee = newTxFee;
+        emit TxFeeChanged(txFee);
     }
 
 
