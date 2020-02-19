@@ -253,10 +253,13 @@ contract("Marketplace2", accounts => {
 
         })
 
-        it("only admin can set txFee, fee < 1", async () => {
+        it("setTxFee access control works", async () => {
             await assertFails(market2.setTxFee(1, { from: accounts[0] }))
             const badFee = w3.utils.toWei("1.1", "ether")
             await assertFails(market2.setTxFee(badFee, { from: admin }))
+        })
+
+        it("txFee works", async () => {
             const fee = w3.utils.toWei("0.5", "ether")
             const res = await market2.setTxFee(fee, { from: admin })
             assertEvent(res, "TxFeeChanged", {
@@ -286,11 +289,10 @@ contract("Marketplace2", accounts => {
             */
 
             // fee is correct
-           const ownerAfter = await token.balanceOf(admin)
-           const sellerAfter = await token.balanceOf(accounts[3])
-           assert(ownerAfter - ownerBefore == 500)
-           assert(sellerAfter - sellerBefore == 1000)
-
+            const ownerAfter = await token.balanceOf(admin)
+            const sellerAfter = await token.balanceOf(accounts[3])
+            assert(ownerAfter - ownerBefore == 500)
+            assert(sellerAfter - sellerBefore == 1000)
 
             const res2 = await market2.setTxFee(0, { from: admin })
             assertEvent(res2, "TxFeeChanged", {
