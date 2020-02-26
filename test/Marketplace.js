@@ -260,18 +260,15 @@ contract("Marketplace2", accounts => {
         })
 
         it("txFee works", async () => {
-            const fee = w3.utils.toWei("0.5", "ether")
+            const fee = w3.utils.toWei("0.25", "ether")
             const res = await market2.setTxFee(fee, { from: admin })
             assertEvent(res, "TxFeeChanged", {
                 newTxFee: fee,
             })
-            //not enough approved with added fee
-            await token.approve(market2.address, 1000, { from: accounts[1] })
-            await assertFails(market2.buy(productId1, 1000, { from: accounts[1] }))
             
             //enough approved with added fee
             await token.approve(market2.address, 0, { from: accounts[1] })
-            await token.approve(market2.address, 1500, { from: accounts[1] })
+            await token.approve(market2.address, 1000, { from: accounts[1] })
             const ownerBefore = await token.balanceOf(admin)
             const sellerBefore = await token.balanceOf(accounts[3])
             await market2.buy(productId1, 1000, { from: accounts[1] })
@@ -291,8 +288,8 @@ contract("Marketplace2", accounts => {
             // fee is correct
             const ownerAfter = await token.balanceOf(admin)
             const sellerAfter = await token.balanceOf(accounts[3])
-            assert(ownerAfter - ownerBefore == 500)
-            assert(sellerAfter - sellerBefore == 1000)
+            assert(ownerAfter - ownerBefore == 250)
+            assert(sellerAfter - sellerBefore == 750)
 
             const res2 = await market2.setTxFee(0, { from: admin })
             assertEvent(res2, "TxFeeChanged", {

@@ -323,12 +323,12 @@ contract Marketplace is Ownable, IMarketplace2 {
             emit NewSubscription(p.id, subscriber, endTimestamp);
         }
         emit Subscribed(p.id, subscriber, endTimestamp);
-        uint price = 0;
+        uint256 price = 0;
         if (requirePayment){
             price = getPriceInData(addSeconds, p.pricePerSecond, p.priceCurrency);
-            require(datacoin.transferFrom(msg.sender, p.beneficiary, price), "error_paymentFailed");
-            if(price > 0 && txFee > 0){
-                uint256 fee = txFee.mul(price).div(1 ether);
+            uint256 fee = txFee.mul(price).div(1 ether);
+            require(datacoin.transferFrom(msg.sender, p.beneficiary, price.sub(fee)), "error_paymentFailed");
+            if(fee > 0){
                 require(datacoin.transferFrom(msg.sender, owner, fee), "error_paymentFailed");
             }
         }
