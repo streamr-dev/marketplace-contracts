@@ -339,9 +339,16 @@ contract Marketplace is Ownable, IMarketplace2 {
         // TODO: require(purchaseAccepted, "error_rejectedBySeller")
 
         // Solidity 4:
-        // 0x91517bdd = keccak256("onPurchase(bytes32,address,uint256,uint256)")
+        // 0x4a439cc0 = keccak256("onPurchase(bytes32,address,uint256,uint256,uint256)")
         // this call returns true if beneficiary is a PurchaseListener, return value is ignored
-        p.beneficiary.call(0x91517bdd, productId, subscriber, oldSub.endTimestamp, price);
+        //(bool success, bytes memory returnData) = 
+        p.beneficiary.call(0x4a439cc0, productId, subscriber, oldSub.endTimestamp, price, fee);
+        /*
+        if(success){
+            (bool accepted) = abi.decode(returnData, (bool));
+            require(accepted, "error_rejectedBySeller");
+        }
+        */
     }
 
     function grantSubscription(bytes32 productId, uint subscriptionSeconds, address recipient) public whenNotHalted onlyProductOwner(productId){

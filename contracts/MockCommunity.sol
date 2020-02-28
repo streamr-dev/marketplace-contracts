@@ -12,8 +12,8 @@ import "openzeppelin-solidity/contracts/token/ERC20/ERC20Mintable.sol";
  */
 contract MockCommunity is PurchaseListener {
     event PurchaseRegistered();
-
-    function onPurchase(bytes32, address, uint, uint) external returns (bool) {
+ 
+    function onPurchase(bytes32, address, uint, uint, uint) external returns (bool) {
         emit PurchaseRegistered();
         return true;
     }
