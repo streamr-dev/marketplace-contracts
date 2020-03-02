@@ -122,7 +122,7 @@ contract Marketplace is Ownable, IMarketplace2 {
     */
     function getProduct(bytes32 id) public view returns (string memory name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state, bool requiresWhitelist) {
         (name, owner, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, state, requiresWhitelist) = _getProductLocal(id);
-        if (owner != 0x0)
+        if (owner != address(0))
             return (name, owner, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, state, requiresWhitelist);
         (name, owner, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, state) = prev_marketplace.getProduct(id);
         return (name, owner, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, state, false);
@@ -149,7 +149,7 @@ contract Marketplace is Ownable, IMarketplace2 {
     // also checks that p exists: p.owner == 0 for non-existent products
     modifier onlyProductOwner(bytes32 productId) {
         (,address _owner,,,,,,) = getProduct(productId);
-        require(_owner != 0x0, "error_notFound");
+        require(_owner != address(0), "error_notFound");
         require(_owner == msg.sender || owner == msg.sender, "error_productOwnersOnly");
         _;
     }
@@ -162,7 +162,7 @@ contract Marketplace is Ownable, IMarketplace2 {
         if(p.id != 0x0)
             return false;
         (string memory _name, address _owner, address _beneficiary, uint _pricePerSecond, IMarketplace1.Currency _priceCurrency, uint _minimumSubscriptionSeconds, IMarketplace1.ProductState _state) = prev_marketplace.getProduct(productId);
-        if(_owner == 0x0)
+        if(_owner == address(0))
             return false;
         p.id = productId;
         p.name = _name;
@@ -189,7 +189,7 @@ contract Marketplace is Ownable, IMarketplace2 {
         // if _productImported, it must have existed in previous marketplace so no need to perform check
         if(!_productImported){
             (,address _owner_prev,,,,,) = prev_marketplace.getProduct(productId);
-            if (_owner_prev == 0x0) { return false; }
+            if (_owner_prev == address(0)) { return false; }
         }
         (, uint _endTimestamp) = prev_marketplace.getSubscription(productId, subscriber);
         if (_endTimestamp == 0x0) { return false; }
@@ -211,10 +211,9 @@ contract Marketplace is Ownable, IMarketplace2 {
         require(id != 0x0, "error_nullProductId");
         require(pricePerSecond > 0, "error_freeProductsNotSupported");
         (,address _owner,,,,,,) = getProduct(id);
-        require(_owner == 0x0, "error_alreadyExists");
-        Product storage p = products[id];
+        require(_owner == address(0), "error_alreadyExists");
         products[id] = Product({id: id, name: name, owner: msg.sender, beneficiary: beneficiary, pricePerSecond: pricePerSecond,
-            priceCurrency: currency, minimumSubscriptionSeconds: minimumSubscriptionSeconds, state: ProductState.Deployed, newOwnerCandidate: 0, requiresWhitelist: requiresWhitelist});
+            priceCurrency: currency, minimumSubscriptionSeconds: minimumSubscriptionSeconds, state: ProductState.Deployed, newOwnerCandidate: address(0), requiresWhitelist: requiresWhitelist});
         emit ProductCreated(msg.sender, id, name, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds);
     }
 
@@ -272,19 +271,19 @@ contract Marketplace is Ownable, IMarketplace2 {
         require(msg.sender == p.newOwnerCandidate, "error_notPermitted");
         emit ProductOwnershipChanged(msg.sender, productId, p.owner);
         p.owner = msg.sender;
-        p.newOwnerCandidate = 0;
+        p.newOwnerCandidate = address(0);
     }
 
     /////////////// Subscription management ///////////////
 
     function getSubscription(bytes32 productId, address subscriber) public view returns (bool isValid, uint endTimestamp) {
         (,address _owner,,,,,,) = _getProductLocal(productId);
-        if(_owner == 0x0){ return prev_marketplace.getSubscription(productId,subscriber);}
+        if(_owner == address(0)){ return prev_marketplace.getSubscription(productId,subscriber);}
         (, TimeBasedSubscription storage sub) = _getSubscriptionLocal(productId, subscriber);
         if(sub.endTimestamp == 0x0){
             // only call prev_marketplace.getSubscription() if product exists in previous marketplace too
             (,address _owner_prev,,,,,) = prev_marketplace.getProduct(productId);
-            if(_owner_prev != 0x0)
+            if(_owner_prev != address(0))
                 return prev_marketplace.getSubscription(productId,subscriber);
         }
         return (_isValid(sub), sub.endTimestamp);
@@ -343,8 +342,11 @@ contract Marketplace is Ownable, IMarketplace2 {
         // 0x4a439cc0 = keccak256("onPurchase(bytes32,address,uint256,uint256,uint256)")
         // this call returns true if beneficiary is a PurchaseListener, return value is ignored
         //(bool success, bytes memory returnData) = 
-        p.beneficiary.call(0x4a439cc0, productId, subscriber, oldSub.endTimestamp, price, fee);
+        //p.beneficiary.call(0x4a439cc0, productId, subscriber, oldSub.endTimestamp, price, fee);
         /*
+        (bool success, bytes memory returnData) = p.beneficiary.call(abi.encodeWithSignature("onPurchase(bytes32,address,uint256,uint256,uint256)",
+             productId, subscriber, oldSub.endTimestamp, price, fee));
+        
         if(success){
             (bool accepted) = abi.decode(returnData, (bool));
             require(accepted, "error_rejectedBySeller");
@@ -488,7 +490,7 @@ contract Marketplace is Ownable, IMarketplace2 {
 
     function getWhitelistState(bytes32 productId, address subscriber) public view returns (WhitelistState wlstate) {
         (,address _owner,,,,,,) = getProduct(productId);
-        require(_owner != 0x0, "error_notFound");
+        require(_owner != address(0), "error_notFound");
         //if it's not local this will return 0, which is WhitelistState.None
         Product storage p = products[productId];
         return p.whitelist[subscriber];
