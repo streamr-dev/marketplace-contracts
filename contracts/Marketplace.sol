@@ -343,7 +343,7 @@ contract Marketplace is Ownable, IMarketplace2 {
         // this call returns true if beneficiary is a PurchaseListener, return value is ignored
         //(bool success, bytes memory returnData) = 
         //p.beneficiary.call(0x4a439cc0, productId, subscriber, oldSub.endTimestamp, price, fee);
-        /*
+        
         (bool success, bytes memory returnData) = p.beneficiary.call(abi.encodeWithSignature("onPurchase(bytes32,address,uint256,uint256,uint256)",
              productId, subscriber, oldSub.endTimestamp, price, fee));
         
@@ -351,7 +351,7 @@ contract Marketplace is Ownable, IMarketplace2 {
             (bool accepted) = abi.decode(returnData, (bool));
             require(accepted, "error_rejectedBySeller");
         }
-        */
+        
     }
 
     function grantSubscription(bytes32 productId, uint subscriptionSeconds, address recipient) public whenNotHalted onlyProductOwner(productId){
