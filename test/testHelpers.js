@@ -88,13 +88,13 @@ function increaseTime(seconds) {
     const id = Date.now()
 
     return new Promise((resolve, reject) => (
-        web3.currentProvider.sendAsync({
+        web3.currentProvider.send({
             jsonrpc: "2.0",
             method: "evm_increaseTime",
             params: [seconds],
             id,
         }, (err1, resp) => (err1 ? reject(err1) :
-            web3.currentProvider.sendAsync({
+            web3.currentProvider.send({
                 jsonrpc: "2.0",
                 method: "evm_mine",
                 id: id + 1,
