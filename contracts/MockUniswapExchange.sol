@@ -1,5 +1,5 @@
 
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.16;
 contract IERC20Token {
 	// these functions aren't abstract since the compiler emits automatically generated getter functions as external
     function name() public view returns (string) {}
@@ -21,7 +21,7 @@ contract IUniswapExchange{
 contract MockUniswapExchange is IUniswapExchange {
     IERC20Token input_token;
     IERC20Token output_token;
-    constructor(address input_token_address, address output_token_address){
+    constructor(address input_token_address, address output_token_address) public {
         input_token = IERC20Token(input_token_address);
         output_token = IERC20Token(output_token_address);
     }

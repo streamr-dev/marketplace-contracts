@@ -1,5 +1,5 @@
 // solhint-disable
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.16;
 
 // File: contracts/token/interfaces/IERC20Token.sol
 
@@ -8,8 +8,8 @@ pragma solidity ^0.4.25;
 */
 contract IERC20Token {
     // these functions aren't abstract since the compiler emits automatically generated getter functions as external
-    function name() public view returns (string) {}
-    function symbol() public view returns (string) {}
+    function name() public view returns (string memory) {}
+    function symbol() public view returns (string memory) {}
     function decimals() public view returns (uint8) {}
     function totalSupply() public view returns (uint256) {}
     function balanceOf(address _owner) public view returns (uint256) { _owner; }
@@ -73,11 +73,11 @@ contract IBancorFormula {
     Bancor Network interface
 */
 contract IBancorNetwork {
-    function convert(IERC20Token[] _path, uint256 _amount, uint256 _minReturn) public payable returns (uint256);
-    function convertFor(IERC20Token[] _path, uint256 _amount, uint256 _minReturn, address _for) public payable returns (uint256);
+    function convert(IERC20Token[] memory _path, uint256 _amount, uint256 _minReturn) public payable returns (uint256);
+    function convertFor(IERC20Token[] memory _path, uint256 _amount, uint256 _minReturn, address _for) public payable returns (uint256);
     
     function convertForPrioritized3(
-        IERC20Token[] _path,
+        IERC20Token[] memory _path,
         uint256 _amount,
         uint256 _minReturn,
         address _for,
@@ -90,7 +90,7 @@ contract IBancorNetwork {
     
     // deprecated, backward compatibility
     function convertForPrioritized2(
-        IERC20Token[] _path,
+        IERC20Token[] memory _path,
         uint256 _amount,
         uint256 _minReturn,
         address _for,
@@ -102,7 +102,7 @@ contract IBancorNetwork {
 
     // deprecated, backward compatibility
     function convertForPrioritized(
-        IERC20Token[] _path,
+        IERC20Token[] memory _path,
         uint256 _amount,
         uint256 _minReturn,
         address _for,

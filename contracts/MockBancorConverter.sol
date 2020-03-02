@@ -1,5 +1,5 @@
 
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.16;
 
 contract IERC20Token {
 	// these functions aren't abstract since the compiler emits automatically generated getter functions as external

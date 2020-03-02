@@ -1,5 +1,5 @@
 // solhint-disable not-rely-on-time
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.16;
 
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
@@ -29,10 +29,10 @@ contract IMarketplace {
     function getPriceInData(uint subscriptionSeconds, uint price, Currency unit) public view returns (uint datacoinAmount) {}
 }
 contract IMarketplace1 is IMarketplace{
-    function getProduct(bytes32 id) public view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state) {}
+    function getProduct(bytes32 id) public view returns (string memory name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state) {}
 }
 contract IMarketplace2 is IMarketplace{
-    function getProduct(bytes32 id) public view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state, bool requiresWhitelist) {}
+    function getProduct(bytes32 id) public view returns (string memory name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state, bool requiresWhitelist) {}
     function buyFor(bytes32 productId, uint subscriptionSeconds, address recipient) public {}
 }
 /**
@@ -120,7 +120,7 @@ contract Marketplace is Ownable, IMarketplace2 {
     /*
         checks this marketplace first, then the previous
     */
-    function getProduct(bytes32 id) public view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state, bool requiresWhitelist) {
+    function getProduct(bytes32 id) public view returns (string memory name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state, bool requiresWhitelist) {
         (name, owner, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, state, requiresWhitelist) = _getProductLocal(id);
         if (owner != 0x0)
             return (name, owner, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, state, requiresWhitelist);
@@ -132,7 +132,7 @@ contract Marketplace is Ownable, IMarketplace2 {
     checks only this marketplace, not the previous marketplace
      */
 
-    function _getProductLocal(bytes32 id) internal view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state, bool requiresWhitelist) {
+    function _getProductLocal(bytes32 id) internal view returns (string memory name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state, bool requiresWhitelist) {
         Product memory p = products[id];
         return (
             p.name,
@@ -197,17 +197,17 @@ contract Marketplace is Ownable, IMarketplace2 {
         emit SubscriptionImported(productId, subscriber, _endTimestamp);
         return true;
     }
-    function createProduct(bytes32 id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds) public whenNotHalted {
+    function createProduct(bytes32 id, string memory name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds) public whenNotHalted {
         _createProduct(id, name, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, false);
     }
 
-    function createProductWithWhitelist(bytes32 id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds) public whenNotHalted {
+    function createProductWithWhitelist(bytes32 id, string memory name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds) public whenNotHalted {
         _createProduct(id, name, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, true);
         emit WhitelistEnabled(id);
     }
 
 
-    function _createProduct(bytes32 id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, bool requiresWhitelist) internal {
+    function _createProduct(bytes32 id, string memory name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, bool requiresWhitelist) internal {
         require(id != 0x0, "error_nullProductId");
         require(pricePerSecond > 0, "error_freeProductsNotSupported");
         (,address _owner,,,,,,) = getProduct(id);
@@ -240,7 +240,7 @@ contract Marketplace is Ownable, IMarketplace2 {
         emit ProductRedeployed(p.owner, productId, p.name, p.beneficiary, p.pricePerSecond, p.priceCurrency, p.minimumSubscriptionSeconds);
     }
 
-    function updateProduct(bytes32 productId, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds) public onlyProductOwner(productId) {
+    function updateProduct(bytes32 productId, string memory name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds) public onlyProductOwner(productId) {
         require(pricePerSecond > 0, "error_freeProductsNotSupported");
         _importProductIfNeeded(productId);
         Product storage p = products[productId];
@@ -324,9 +324,10 @@ contract Marketplace is Ownable, IMarketplace2 {
         }
         emit Subscribed(p.id, subscriber, endTimestamp);
         uint256 price = 0;
+        uint256 fee = 0;
         if (requirePayment){
             price = getPriceInData(addSeconds, p.pricePerSecond, p.priceCurrency);
-            uint256 fee = txFee.mul(price).div(1 ether);
+            fee = txFee.mul(price).div(1 ether);
             require(datacoin.transferFrom(msg.sender, p.beneficiary, price.sub(fee)), "error_paymentFailed");
             if(fee > 0){
                 require(datacoin.transferFrom(msg.sender, owner, fee), "error_paymentFailed");

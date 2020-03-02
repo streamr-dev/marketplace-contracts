@@ -1,4 +1,4 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.16;
 
 interface PurchaseListener {
     // TODO: find out about how to best detect who implements an interface

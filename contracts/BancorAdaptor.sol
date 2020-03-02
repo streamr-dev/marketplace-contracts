@@ -1,11 +1,11 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.16;
 
 import "./Marketplace.sol";
 
 contract IERC20Token {
     // these functions aren't abstract since the compiler emits automatically generated getter functions as external
-    function name() public view returns (string) {}
-    function symbol() public view returns (string) {}
+    function name() public view returns (string memory) {}
+    function symbol() public view returns (string memory) {}
     function decimals() public view returns (uint8) {}
     function totalSupply() public view returns (uint256) {}
     function balanceOf(address _owner) public view returns (uint256) { _owner; }
@@ -17,7 +17,7 @@ contract IERC20Token {
 }
 
 contract IBancorConverter {
-    function quickConvert(IERC20Token[] _path, uint256 _amount, uint256 _minReturn) public payable returns (uint256) {}
+    function quickConvert(IERC20Token[] memory _path, uint256 _amount, uint256 _minReturn) public payable returns (uint256) {}
 }
 
 
@@ -43,7 +43,7 @@ contract BancorAdaptor {
         return marketplace.getPriceInData(1, pricePerSecond, priceCurrency);
     }
 
-    function _buyUsingBancor(bytes32 productId, IERC20Token[] bancor_conversion_path, uint minSubscriptionSeconds, uint amount, uint pricePerSecond, bool isEth) internal {
+    function _buyUsingBancor(bytes32 productId, IERC20Token[] memory bancor_conversion_path, uint minSubscriptionSeconds, uint amount, uint pricePerSecond, bool isEth) internal {
         require(bancor_conversion_path[bancor_conversion_path.length - 1] == address(datacoin), "must convert to DATAcoin");
         require(pricePerSecond > 0, "buyUsingBancor requires pricePerSecond > 0");
         uint min_datacoin = pricePerSecond.mul(minSubscriptionSeconds);
@@ -57,7 +57,7 @@ contract BancorAdaptor {
         marketplace.buyFor(productId,received_datacoin.div(pricePerSecond),msg.sender);
     }
 
-    function buyWithETH(bytes32 productId,IERC20Token[] bancor_conversion_path,uint minSubscriptionSeconds) public payable{
+    function buyWithETH(bytes32 productId,IERC20Token[] memory bancor_conversion_path,uint minSubscriptionSeconds) public payable{
         uint pricePerSecond = _getPricePerSecond(productId);
 
         if(pricePerSecond == 0x0){
@@ -71,7 +71,7 @@ contract BancorAdaptor {
         _buyUsingBancor(productId, bancor_conversion_path, minSubscriptionSeconds, msg.value, pricePerSecond, true);
     }
 
-    function buyWithERC20(bytes32 productId,IERC20Token[] bancor_conversion_path,uint minSubscriptionSeconds, uint amount) public{
+    function buyWithERC20(bytes32 productId,IERC20Token[] memory bancor_conversion_path,uint minSubscriptionSeconds, uint amount) public{
         uint pricePerSecond = _getPricePerSecond(productId);
         if(pricePerSecond == 0x0){
             //subscription is free. return payment and subscribe
