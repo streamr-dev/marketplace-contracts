@@ -1,3 +1,16 @@
+/*
+    Truffle 5 returns a map of return values for function calls, indexed by arg name and number.
+    assertReturnValueEqual compares with a supplied array. For example:
+    assertReturnValueEqual({0:"a", 1:"b", someArgName:"a"}, ["a","b"]) passes
+*/
+function assertReturnValueEqual(actual, expected) {
+    let i
+    for(i = 0; i < expected.length; i++){
+        assertEqual(actual[i], expected[i])
+    }
+    //shouldnt have a numerical key > expected.length -1
+    assert.equal(actual[i], undefined)
+}
 /**
  * Assert equality in web3 return value sense, modulo conversions to "normal" JS strings and numbers
  */
@@ -19,7 +32,7 @@ function assertEqual(actual, expected) {
     }
     // convert hex bytes to string if expected thing looks like a string and not hex
     if (typeof expected === "string" && Number.isNaN(+expected) && !Number.isNaN(+actual)) {
-        assert.equal(web3.toUtf8(actual), expected)
+        assert.equal(web3.utils.toUtf8(actual), expected)
         return
     }
     // fail now with nice error if didn't hit the filters
@@ -43,9 +56,9 @@ function assertEvent(truffleResponse, eventName, eventArgs) {
  * @see https://solidity.readthedocs.io/en/develop/abi-spec.html#function-selector
  */
 function assertEventBySignature(truffleResponse, sig) {
-    const allEventHashes = truffleResponse.receipt.logs.map(log => log.topics[0].slice(0, 8)).join(", ")
-    const hash = web3.sha3(sig)
-    const log = truffleResponse.receipt.logs.find(L => L.topics[0] === hash)
+    const allEventHashes = truffleResponse.receipt.rawLogs.map(log => log.topics[0].slice(0, 8)).join(", ")
+    const hash = web3.utils.sha3(sig)
+    const log = truffleResponse.receipt.rawLogs.find(L => L.topics[0] === hash)
     assert(log, `Event ${sig} expected, hash: ${hash.slice(0, 8)}, got: ${allEventHashes}`)
 }
 
@@ -104,6 +117,7 @@ function increaseTime(seconds) {
 }
 
 module.exports = {
+    assertReturnValueEqual,
     assertEqual,
     assertEvent,
     assertEventBySignature,

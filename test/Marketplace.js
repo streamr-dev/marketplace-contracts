@@ -7,7 +7,7 @@ const ERC20Mintable = artifacts.require("zeppelin-solidity/contracts/token/ERC20
 
 const { Marketplace: { ProductState, Currency } } = require("../src/contracts/enums")
 
-const { assertEvent, assertEqual, assertFails, assertEventBySignature, now } = require("./testHelpers")
+const { assertReturnValueEqual, assertEvent, assertEqual, assertFails, assertEventBySignature, now } = require("./testHelpers")
 
 contract("Marketplace2", accounts => {
     let market
@@ -29,10 +29,12 @@ contract("Marketplace2", accounts => {
     describe("Creating, deleting products in market1 and market2", () => {
         //product created in market1
         let id1 = "test1"
+        let id1bytes = web3.utils.asciiToHex(id1)
         //product created in market2
         let id2 = "test2"
+        let id2bytes = web3.utils.asciiToHex(id2)
         it("creates a product with correct params", async () => {
-            const res = await market.createProduct(id1, id1, accounts[0], 1, Currency.DATA, 1, { from: accounts[0] })
+            const res = await market.createProduct(id1bytes, id1, accounts[0], 1, Currency.DATA, 1, { from: accounts[0] })
             assertEvent(res, "ProductCreated", {
                 owner: accounts[0],
                 id: id1,
@@ -42,9 +44,9 @@ contract("Marketplace2", accounts => {
                 currency: Currency.DATA,
                 minimumSubscriptionSeconds: 1,
             })
-            assertEqual(await market2.getProduct(id1), [id1, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed, false])
+            assertReturnValueEqual(await market2.getProduct(id1bytes), [id1, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed, false])
 
-            const res2 = await market2.createProduct(id2, id2, accounts[0], 1, Currency.DATA, 1, { from: accounts[0] })
+            const res2 = await market2.createProduct(id2bytes, id2, accounts[0], 1, Currency.DATA, 1, { from: accounts[0] })
             assertEvent(res2, "ProductCreated", {
                 owner: accounts[0],
                 id: id2,
@@ -54,11 +56,11 @@ contract("Marketplace2", accounts => {
                 currency: Currency.DATA,
                 minimumSubscriptionSeconds: 1,
             })
-            assertEqual(await market2.getProduct(id2), [id2, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed, false])
+            assertReturnValueEqual(await market2.getProduct(id2bytes), [id2, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed, false])
         })
 
         it("Marketplace2.getProduct() works using Marketplace1 ABI", async () => {
-            assertEqual(await market2using1api.getProduct(id2), [id2, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed])
+            assertReturnValueEqual(await market2using1api.getProduct(id2bytes), [id2, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed])
         })
 
         it("will not accept empty product ID", async () => {
@@ -243,13 +245,18 @@ contract("Marketplace2", accounts => {
     describe("Buying products", () => {
         let productId1
         let productId2
+        let productId1bytes
+        let productId2bytes
         let testIndex = 0
         beforeEach(async () => {
             productId1 = `test_buy1_${testIndex}`
             productId2 = `test_buy2_${testIndex}`
+            productId1bytes = web3.utils.asciiToHex(productId1)
+            productId2bytes = web3.utils.asciiToHex(productId2)
+
             testIndex += 1
-            await market.createProduct(productId1, productId1, accounts[3], 1, Currency.DATA, 1, { from: accounts[0] })
-            await market2.createProduct(productId2, productId2, accounts[3], 1, Currency.DATA, 1, { from: accounts[0] })
+            await market.createProduct(productId1bytes, productId1, accounts[3], 1, Currency.DATA, 1, { from: accounts[0] })
+            await market2.createProduct(productId2bytes, productId2, accounts[3], 1, Currency.DATA, 1, { from: accounts[0] })
 
         })
 
@@ -349,12 +356,17 @@ contract("Marketplace2", accounts => {
 
         it("activates a PurchaseListener", async () => {
             const listener = await MockCommunity.new(market2.address, { from: admin })
-            await market2.updateProduct(productId1, "test", listener.address, 1, Currency.DATA, 1, { from: accounts[0] })
-            const res = await market2.buy(productId1, 100, { from: accounts[1] })
+            await market2.updateProduct(productId1bytes, "test", listener.address, 1, Currency.DATA, 1, { from: accounts[0] })
+            const res = await market2.buy(productId1bytes, 100, { from: accounts[1] })
             assertEventBySignature(res, "PurchaseRegistered()")
-            await market2.updateProduct(productId2, "test", listener.address, 1, Currency.DATA, 1, { from: accounts[0] })
-            const res2 = await market2.buy(productId2, 100, { from: accounts[1] })
+            await market2.updateProduct(productId2bytes, "test", listener.address, 1, Currency.DATA, 1, { from: accounts[0] })
+            const res2 = await market2.buy(productId2bytes, 100, { from: accounts[1] })
             assertEventBySignature(res2, "PurchaseRegistered()")
+
+            //should check the return value of onPurchase and revert if false
+            await listener.setReturnVal(false, { from: accounts[0] })
+            await assertFails(market2.buy(productId1bytes, 100, { from: accounts[1] }))
+            await assertFails(market2.buy(productId2bytes, 100, { from: accounts[1] }))
         })
 
         it("can pay to non-PurchaseListener contracts", async () => {

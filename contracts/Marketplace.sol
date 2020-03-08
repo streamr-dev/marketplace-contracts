@@ -309,6 +309,7 @@ contract Marketplace is Ownable, IMarketplace2 {
         require(p.state == ProductState.Deployed, "error_notDeployed");
         require(!p.requiresWhitelist || p.whitelist[subscriber] == WhitelistState.Approved, "error_whitelistNotAllowed");
         uint endTimestamp;
+        
         if (oldSub.endTimestamp > block.timestamp) {
             require(addSeconds > 0, "error_topUpTooSmall");
             endTimestamp = oldSub.endTimestamp.add(addSeconds);
@@ -322,6 +323,7 @@ contract Marketplace is Ownable, IMarketplace2 {
             emit NewSubscription(p.id, subscriber, endTimestamp);
         }
         emit Subscribed(p.id, subscriber, endTimestamp);
+        
         uint256 price = 0;
         uint256 fee = 0;
         if (requirePayment){
@@ -332,26 +334,20 @@ contract Marketplace is Ownable, IMarketplace2 {
                 require(datacoin.transferFrom(msg.sender, owner, fee), "error_paymentFailed");
             }
         }
-
-        // Solidity 5:
-        //(bool success, bytes memory returnData) = p.beneficiary.call(abi.encodeWithSignature("onPurchase(bytes32,address,uint256,uint256)", productId, subscriber, oldSub.endTimestamp, price));
-        // TODO: check returnData if onPurchase returned true (accept purchase) or false (reject purchase)
-        // TODO: require(purchaseAccepted, "error_rejectedBySeller")
-
-        // Solidity 4:
-        // 0x4a439cc0 = keccak256("onPurchase(bytes32,address,uint256,uint256,uint256)")
-        // this call returns true if beneficiary is a PurchaseListener, return value is ignored
-        //(bool success, bytes memory returnData) = 
-        //p.beneficiary.call(0x4a439cc0, productId, subscriber, oldSub.endTimestamp, price, fee);
         
-        (bool success, bytes memory returnData) = p.beneficiary.call(abi.encodeWithSignature("onPurchase(bytes32,address,uint256,uint256,uint256)",
-             productId, subscriber, oldSub.endTimestamp, price, fee));
+        uint256 codeSize;
+        address addr = p.beneficiary;
+        assembly { codeSize := extcodesize(addr) }  // solhint-disable-line no-inline-assembly
+        if (codeSize > 0) {
+            (bool success, bytes memory returnData) = p.beneficiary.call(abi.encodeWithSignature("onPurchase(bytes32,address,uint256,uint256,uint256)",
+                productId, subscriber, oldSub.endTimestamp, price, fee));
         
-        if(success){
-            (bool accepted) = abi.decode(returnData, (bool));
-            require(accepted, "error_rejectedBySeller");
+            if(success){
+                (bool accepted) = abi.decode(returnData, (bool));
+                require(accepted, "error_rejectedBySeller");
+            }
         }
-        
+                
     }
 
     function grantSubscription(bytes32 productId, uint subscriptionSeconds, address recipient) public whenNotHalted onlyProductOwner(productId){
