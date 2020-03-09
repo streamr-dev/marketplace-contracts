@@ -10,5 +10,6 @@ interface PurchaseListener {
      *   (declining should probably cause revert, but that's up to the caller)
      * IMPORTANT: include onlyMarketplace modifier to your implementations!
      */
-    function onPurchase(bytes32 productId, address subscriber, uint endTimestamp, uint paidDatacoin) external returns (bool accepted);
+    function onPurchase(bytes32 productId, address subscriber, uint endTimestamp, uint priceDatacoin, uint feeDatacoin)
+        external returns (bool accepted);
 }

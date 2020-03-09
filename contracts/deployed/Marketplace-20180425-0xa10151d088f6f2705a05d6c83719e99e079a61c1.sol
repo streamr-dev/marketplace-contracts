@@ -4,9 +4,12 @@ pragma solidity 0.4.25;
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
-import "../PurchaseListener.sol";
 import "../Ownable.sol";
 
+interface PurchaseListener {
+    function onPurchase(bytes32 productId, address subscriber, uint endTimestamp, uint priceDatacoin)
+        external returns (bool accepted);
+}
 /**
  * @title Streamr Marketplace
  * @dev note about numbers:

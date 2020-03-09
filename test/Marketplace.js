@@ -1,3 +1,5 @@
+const Web3 = require("web3")
+const w3 = new Web3(web3.currentProvider)
 const Marketplace = artifacts.require("./Marketplace20180425.sol")
 const Marketplace2 = artifacts.require("./Marketplace.sol")
 const MockCommunity = artifacts.require("./MockCommunity.sol")
@@ -249,6 +251,51 @@ contract("Marketplace2", accounts => {
             await market.createProduct(productId1, productId1, accounts[3], 1, Currency.DATA, 1, { from: accounts[0] })
             await market2.createProduct(productId2, productId2, accounts[3], 1, Currency.DATA, 1, { from: accounts[0] })
 
+        })
+
+        it("setTxFee access control works", async () => {
+            await assertFails(market2.setTxFee(1, { from: accounts[0] }))
+            const badFee = w3.utils.toWei("1.1", "ether")
+            await assertFails(market2.setTxFee(badFee, { from: admin }))
+        })
+
+        it("txFee works", async () => {
+            const fee = w3.utils.toWei("0.25", "ether")
+            const res = await market2.setTxFee(fee, { from: admin })
+            assertEvent(res, "TxFeeChanged", {
+                newTxFee: fee,
+            })
+            
+            //enough approved with added fee
+            await token.approve(market2.address, 0, { from: accounts[1] })
+            await token.approve(market2.address, 1000, { from: accounts[1] })
+            const ownerBefore = await token.balanceOf(admin)
+            const sellerBefore = await token.balanceOf(accounts[3])
+            await market2.buy(productId1, 1000, { from: accounts[1] })
+            
+            /*
+            NOTE assertEvent only tests for events in the executed contract, not ancillary contracts.
+            So this doesn't work:
+            assertEvent(buyres, "Transfer", {
+                _from: accounts[1],
+                _to: admin,
+                _value: 500
+            })
+
+            TODO: try to patch assertEvent to check ancillary contract events. See how truffle decodes.
+            */
+
+            // fee is correct
+            const ownerAfter = await token.balanceOf(admin)
+            const sellerAfter = await token.balanceOf(accounts[3])
+            assert(ownerAfter - ownerBefore == 250)
+            assert(sellerAfter - sellerBefore == 750)
+
+            const res2 = await market2.setTxFee(0, { from: admin })
+            assertEvent(res2, "TxFeeChanged", {
+                newTxFee: 0,
+            })
+        
         })
 
         it("fails for bad arguments", async () => {

@@ -73,6 +73,8 @@ contract Marketplace is Ownable, IMarketplace2 {
     event WhitelistEnabled(bytes32 indexed productId);
     event WhitelistDisabled(bytes32 indexed productId);
 
+    //txFee events
+    event TxFeeChanged(uint256 indexed newTxFee);
 
 
     struct Product {
@@ -100,6 +102,7 @@ contract Marketplace is Ownable, IMarketplace2 {
 
     address public currencyUpdateAgent;
     IMarketplace1 prev_marketplace;
+    uint256 public txFee;
 
     constructor(address datacoinAddress, address currencyUpdateAgentAddress, address prev_marketplace_address) Ownable() public {
         _initialize(datacoinAddress, currencyUpdateAgentAddress, prev_marketplace_address);
@@ -320,10 +323,15 @@ contract Marketplace is Ownable, IMarketplace2 {
             emit NewSubscription(p.id, subscriber, endTimestamp);
         }
         emit Subscribed(p.id, subscriber, endTimestamp);
-        uint price = 0;
+        uint256 price = 0;
+        uint256 fee = 0;
         if (requirePayment){
             price = getPriceInData(addSeconds, p.pricePerSecond, p.priceCurrency);
-            require(datacoin.transferFrom(msg.sender, p.beneficiary, price), "error_paymentFailed");
+            fee = txFee.mul(price).div(1 ether);
+            require(datacoin.transferFrom(msg.sender, p.beneficiary, price.sub(fee)), "error_paymentFailed");
+            if(fee > 0){
+                require(datacoin.transferFrom(msg.sender, owner, fee), "error_paymentFailed");
+            }
         }
 
         // Solidity 5:
@@ -332,9 +340,16 @@ contract Marketplace is Ownable, IMarketplace2 {
         // TODO: require(purchaseAccepted, "error_rejectedBySeller")
 
         // Solidity 4:
-        // 0x91517bdd = keccak256("onPurchase(bytes32,address,uint256,uint256)")
+        // 0x4a439cc0 = keccak256("onPurchase(bytes32,address,uint256,uint256,uint256)")
         // this call returns true if beneficiary is a PurchaseListener, return value is ignored
-        p.beneficiary.call(0x91517bdd, productId, subscriber, oldSub.endTimestamp, price);
+        //(bool success, bytes memory returnData) = 
+        p.beneficiary.call(0x4a439cc0, productId, subscriber, oldSub.endTimestamp, price, fee);
+        /*
+        if(success){
+            (bool accepted) = abi.decode(returnData, (bool));
+            require(accepted, "error_rejectedBySeller");
+        }
+        */
     }
 
     function grantSubscription(bytes32 productId, uint subscriptionSeconds, address recipient) public whenNotHalted onlyProductOwner(productId){
@@ -477,6 +492,13 @@ contract Marketplace is Ownable, IMarketplace2 {
         //if it's not local this will return 0, which is WhitelistState.None
         Product storage p = products[productId];
         return p.whitelist[subscriber];
+    }
+
+    //tx fee
+    function setTxFee(uint256 newTxFee) public onlyOwner {
+        require(newTxFee <= 1 ether, "error_invalidTxFee");
+        txFee = newTxFee;
+        emit TxFeeChanged(txFee);
     }
 
 
