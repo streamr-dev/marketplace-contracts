@@ -18,7 +18,7 @@ describe("Marketplace", () => {
 
         const accounts = await w3.eth.getAccounts()
 
-/*
+
         const token = await Token
             .deploy({data: TokenJson.bytecode})
             .send({from: accounts[0], gas: 4000000})
@@ -39,7 +39,7 @@ describe("Marketplace", () => {
             .send({from: accounts[0], gas: 4000000})
         await token.methods.mint(accounts[1], 100000).send({from: accounts[0], gas: 4000000})
         await token.methods.approve(market.options.address, 10000).send({from: accounts[1], gas: 4000000})
-*/
+
         // TODO: find out why the following fails
         // await market.methods.buy(productIdHex, 10).send({from: accounts[1], gas: 4000000})
     })

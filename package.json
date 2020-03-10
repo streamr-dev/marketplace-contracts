@@ -16,11 +16,13 @@
     "mocha": "^5.2.0",
     "node-fetch": "^2.2.0",
     "openzeppelin-solidity": "2.5.0",
-    "solc": "^0.5.16",
+    "solc": "0.5.16",
     "solhint": "^2.0.0",
-    "truffle": "^5.1.15",
+    "truffle": "5.1.16",
     "truffle-flattener": "1.2.5",
-    "web3": "1.0.0-beta.36"
+    "web3": "1.2.6"
   },
-  "dependencies": {}
+  "dependencies": {
+    "ganache": "^6.4.4"
+  }
 }

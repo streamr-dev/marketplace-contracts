@@ -13,6 +13,9 @@
                 "test",
                 "${file}"
             ],
+            "skipFiles": [
+                "<node_internals>/**"
+            ],
             "internalConsoleOptions": "openOnSessionStart"
         }, {
             "type": "node",
