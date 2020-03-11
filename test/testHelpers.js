@@ -1,16 +1,18 @@
-/*
-    Truffle 5 returns a map of return values for function calls, indexed by arg name and number.
-    assertReturnValueEqual compares with a supplied array. For example:
-    assertReturnValueEqual({0:"a", 1:"b", someArgName:"a"}, ["a","b"]) passes
-*/
+/**
+ * Truffle 5 returns a map of return values for function calls, indexed by arg name and number.
+ * assertReturnValueEqual compares with a supplied array. For example:
+ * assertReturnValueEqual({0:"a", 1:"b", someArgName:"a"}, ["a", "b"]) passes
+ */
 function assertReturnValueEqual(actual, expected) {
     let i
-    for(i = 0; i < expected.length; i++){
+    for (i = 0; i < expected.length; i++) {
         assertEqual(actual[i], expected[i])
     }
-    //shouldnt have a numerical key > expected.length -1
-    assert.equal(actual[i], undefined)
+
+    // shouldnt have a numerical key > expected.length - 1
+    assert.equal(actual[i], undefined, `Unexpected extra return value: ${actual[i]}, expected only ${i} values.`)
 }
+
 /**
  * Assert equality in web3 return value sense, modulo conversions to "normal" JS strings and numbers
  */
@@ -65,22 +67,21 @@ function assertEventBySignature(truffleResponse, sig) {
 /**
  * Expect given {Promise} to fail
  * @param {Promise} promise
- * @param {string} revertReason smart contract revert reason if expecting an EVM failure, otherwise just Error.message
+ * @param {string} reason smart contract revert reason if expecting an EVM failure, otherwise just Error.message
  */
-async function assertFails(promise, revertReason) {
+async function assertFails(promise, reason) {
     let failed = false
     try {
         await promise
     } catch (e) {
-        if (revertReason) {
-            if (e.message.startsWith("VM Exception while processing transaction: revert ")) {
-                const reason = e.message.slice(50)
-                assert.strictEqual(revertReason, reason, "Unexpected revert reason")
-            } else {
-                assert.strictEqual(revertReason, e.message, "Unexpected error message")
-            }
-        }
         failed = true
+        if (reason) {
+            // truffle 5.1.9 seems to throw different kind of exceptions from constant methods, without "reason"
+            //   so instead scrape the reason from string like "Returned error: VM Exception while processing transaction: revert error_badSignatureVersion"
+            //   it might end in a period.
+            const actualReason = e.reason || e.message.match(/.* (\w*)\.?/)[1]
+            assert.strictEqual(actualReason, reason)
+        }
     }
     if (!failed) {
         throw new Error("Expected call to fail")

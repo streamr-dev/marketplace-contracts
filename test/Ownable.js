@@ -25,7 +25,7 @@ contract("Ownable", (accounts) => {
     })
 
     it("should prevent to claimOwnership from not-pendingOwner", async () => {
-        assertFails(ownable.claimOwnership({ from: accounts[2] }), "Returned error: VM Exception while processing transaction: revert onlyPendingOwner -- Reason given: onlyPendingOwner.")
+        assertFails(ownable.claimOwnership({ from: accounts[2] }), "onlyPendingOwner")
     })
 
     it("should prevent non-owners from transfering", async () => {
@@ -33,7 +33,7 @@ contract("Ownable", (accounts) => {
         const owner = await ownable.owner.call()
 
         assert.isTrue(owner !== other)
-        assertFails(ownable.transferOwnership(other, { from: other }), "Returned error: VM Exception while processing transaction: revert onlyOwner -- Reason given: onlyOwner.")
+        assertFails(ownable.transferOwnership(other, { from: other }), "onlyOwner")
     })
 
     describe("after initiating a transfer", () => {
