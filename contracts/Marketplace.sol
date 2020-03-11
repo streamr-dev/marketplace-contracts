@@ -405,7 +405,6 @@ contract Marketplace is Ownable, IMarketplace2 {
                 require(accepted, "error_rejectedBySeller");
             }
         }
-
     }
 
     function grantSubscription(bytes32 productId, uint subscriptionSeconds, address recipient) public whenNotHalted onlyProductOwner(productId){

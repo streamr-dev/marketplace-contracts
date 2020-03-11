@@ -154,7 +154,7 @@ contract("Marketplace2", accounts => {
         //product created in 1, subcription bought in 1
 
         const productId = web3.utils.padLeft(web3.utils.asciiToHex("test_wl"), 64)
-        const productId2 = web3.utils.padLeft(web3.utils.asciiToHex("test_wl2"), 64) 
+        const productId2 = web3.utils.padLeft(web3.utils.asciiToHex("test_wl2"), 64)
 
 
 
@@ -212,12 +212,12 @@ contract("Marketplace2", accounts => {
             assertEvent(res, "WhitelistEnabled", {
                 productId: productId2
             })
-            
+
             const res2 = await market2.whitelistRequest(productId2, { from: buyer})
             assertEvent(res2, "WhitelistRequested", {
                 subscriber: buyer
             })
-            
+
             await assertFails(market2.buy(productId2, 100, { from: buyer }))
             const res3 = await market2.whitelistApprove(productId2, buyer, { from: accounts[0]})
             assertEvent(res3, "WhitelistApproved", {
@@ -239,7 +239,7 @@ contract("Marketplace2", accounts => {
             assertEvent(res6, "NewSubscription", {
                 subscriber: accounts[4]
             })
-            
+
         })
 
 
@@ -275,14 +275,14 @@ contract("Marketplace2", accounts => {
             assertEvent(res, "TxFeeChanged", {
                 newTxFee: fee,
             })
-            
+
             //enough approved with added fee
             await token.approve(market2.address, 0, { from: accounts[1] })
             await token.approve(market2.address, 1000, { from: accounts[1] })
             const ownerBefore = await token.balanceOf(admin)
             const sellerBefore = await token.balanceOf(accounts[3])
-            await market2.buy(productId1bytes, 1000, { from: accounts[1] })
-            
+            await market2.buy(productId1, 1000, { from: accounts[1] })
+
             /*
             NOTE assertEvent only tests for events in the executed contract, not ancillary contracts.
             So this doesn't work:
@@ -305,7 +305,53 @@ contract("Marketplace2", accounts => {
             assertEvent(res2, "TxFeeChanged", {
                 newTxFee: 0,
             })
-        
+
+        })
+
+        it("fails for bad arguments", async () => {
+            await assertFails(market2.buy(productId1, 0, { from: accounts[0] }))
+            await assertFails(market2.buy(productId1, 0, { from: accounts[1] }))
+            await assertFails(market2.buy(productId2, 0, { from: accounts[0] }))
+            await assertFails(market2.buy(productId2, 0, { from: accounts[1] }))
+        })
+
+        it("txFee works", async () => {
+            const fee = w3.utils.toWei("0.25", "ether")
+            const res = await market2.setTxFee(fee, { from: admin })
+            assertEvent(res, "TxFeeChanged", {
+                newTxFee: fee,
+            })
+
+            //enough approved with added fee
+            await token.approve(market2.address, 0, { from: accounts[1] })
+            await token.approve(market2.address, 1000, { from: accounts[1] })
+            const ownerBefore = await token.balanceOf(admin)
+            const sellerBefore = await token.balanceOf(accounts[3])
+            await market2.buy(productId1bytes, 1000, { from: accounts[1] })
+
+            /*
+            NOTE assertEvent only tests for events in the executed contract, not ancillary contracts.
+            So this doesn't work:
+            assertEvent(buyres, "Transfer", {
+                _from: accounts[1],
+                _to: admin,
+                _value: 500
+            })
+
+            TODO: try to patch assertEvent to check ancillary contract events. See how truffle decodes.
+            */
+
+            // fee is correct
+            const ownerAfter = await token.balanceOf(admin)
+            const sellerAfter = await token.balanceOf(accounts[3])
+            assert(ownerAfter - ownerBefore == 250)
+            assert(sellerAfter - sellerBefore == 750)
+
+            const res2 = await market2.setTxFee(0, { from: admin })
+            assertEvent(res2, "TxFeeChanged", {
+                newTxFee: 0,
+            })
+
         })
 
         it("fails for bad arguments", async () => {
@@ -486,7 +532,7 @@ contract("Marketplace2", accounts => {
             const id2 = web3.utils.padLeft(web3.utils.asciiToHex("test_admin_halt2"), 64)
             const id3 = web3.utils.padLeft(web3.utils.asciiToHex("test_admin_halt3"), 64)
             const id4 = web3.utils.padLeft(web3.utils.asciiToHex("test_admin_halt4"), 64)
-            
+
             await market2.createProduct(id, "test", accounts[3], 1, Currency.USD, 1, { from: accounts[0] })
             await token.approve(market2.address, 1000, { from: accounts[2] })
             await token.approve(market2.address, 1000, { from: admin })
@@ -567,7 +613,7 @@ contract("Marketplace2", accounts => {
             let productId = web3.utils.padLeft(web3.utils.asciiToHex("test_admin_transfer"), 64)
             let productId2 = web3.utils.padLeft(web3.utils.asciiToHex("test_admin_transfer2"), 64)
 
-            
+
             await assertFails(market2.halt({ from: accounts[0] }))
             market2.transferOwnership(accounts[0], { from: admin })
             market2.claimOwnership({ from: accounts[0] })
