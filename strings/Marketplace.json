@@ -15,10 +15,10 @@
     "error_newSubscriptionTooSmall": "More ether required to meet the minimum subscription period.",
 
     "error_halted": "Marketplace is down for maintenance. Sorry for the inconvenience.",
-    "error_whitelistNotEnabled" : "Whitelist is not enabled",
-    "error_whitelistRequestAlreadySubmitted" : "Whitelist request has been submitted and duplicate request not allowed",
-    "error_whitelistNotAllowed" : "Purchase is not allowed by the whitelist",
+    "error_whitelistNotEnabled": "Whitelist is not enabled",
+    "error_whitelistRequestAlreadySubmitted": "Whitelist request has been submitted and duplicate request not allowed",
+    "error_whitelistNotAllowed": "Purchase is not allowed by the whitelist",
 
-     "error_invalidTxFee" : "invalid txFee value (eg > 1 ether)"
-
+    "error_invalidTxFee": "invalid txFee value (eg > 1 ether)",
+    "error_invalidRate": "invalid exchange rate, must be positive"
 }
