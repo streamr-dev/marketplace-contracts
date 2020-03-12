@@ -1,5 +1,5 @@
 // solhint-disable not-rely-on-time
-pragma solidity 0.4.25;
+pragma solidity ^0.5.16;
 
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
@@ -88,7 +88,7 @@ contract Marketplace20180425 is Ownable {
     ////////////////// Product management /////////////////
 
     mapping (bytes32 => Product) public products;
-    function getProduct(bytes32 id) public view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state) {
+    function getProduct(bytes32 id) public view returns (string memory name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state) {
         return (
             products[id].name,
             products[id].owner,
@@ -108,12 +108,12 @@ contract Marketplace20180425 is Ownable {
         _;
     }
 
-    function createProduct(bytes32 id, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds) public whenNotHalted {
+    function createProduct(bytes32 id, string memory name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds) public whenNotHalted {
         require(id != 0x0, "error_nullProductId");
         require(pricePerSecond > 0, "error_freeProductsNotSupported");
         Product storage p = products[id];
         require(p.id == 0x0, "error_alreadyExists");
-        products[id] = Product(id, name, msg.sender, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, ProductState.Deployed, 0);
+        products[id] = Product(id, name, msg.sender, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, ProductState.Deployed, address(0));
         emit ProductCreated(msg.sender, id, name, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds);
     }
 
@@ -137,7 +137,7 @@ contract Marketplace20180425 is Ownable {
         emit ProductRedeployed(p.owner, productId, p.name, p.beneficiary, p.pricePerSecond, p.priceCurrency, p.minimumSubscriptionSeconds);
     }
 
-    function updateProduct(bytes32 productId, string name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds) public onlyProductOwner(productId) {
+    function updateProduct(bytes32 productId, string memory name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds) public onlyProductOwner(productId) {
         require(pricePerSecond > 0, "error_freeProductsNotSupported");
         Product storage p = products[productId];
         p.name = name;
@@ -166,7 +166,7 @@ contract Marketplace20180425 is Ownable {
         require(msg.sender == p.newOwnerCandidate, "error_notPermitted");
         emit ProductOwnershipChanged(msg.sender, productId, p.owner);
         p.owner = msg.sender;
-        p.newOwnerCandidate = 0;
+        p.newOwnerCandidate = address(0);
     }
 
     /////////////// Subscription management ///////////////

@@ -2,6 +2,7 @@
 
 // using the NEW web3 1.0
 const Web3 = require("web3")
+
 const w3 = new Web3(web3.currentProvider)
 
 const { Marketplace: { Currency } } = require("../src/contracts/enums")
@@ -16,9 +17,12 @@ describe("Marketplace", () => {
         const Token = new w3.eth.Contract(TokenJson.abi)
 
         const accounts = await w3.eth.getAccounts()
+
+
         const token = await Token
             .deploy({data: TokenJson.bytecode})
             .send({from: accounts[0], gas: 4000000})
+
         const market_prev = await Marketplace_prev
             .deploy({data: MarketplaceJson_prev.bytecode, arguments: [token.options.address, accounts[8]]})
             .send({from: accounts[0], gas: 6000000})

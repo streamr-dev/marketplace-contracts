@@ -1,4 +1,4 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.16;
 
 contract IMarketplace {
     enum ProductState {
@@ -11,25 +11,24 @@ contract IMarketplace {
         USD                         // attodollars (10^-18 USD)
     }
 
-    function getProduct(bytes32 id) public view returns (string name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state) {}
+    function getProduct(bytes32 id) public view returns (string memory name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state) {}
     function getSubscription(bytes32 productId, address subscriber) public view returns (bool isValid, uint endTimestamp) {}
     function getPriceInData(uint subscriptionSeconds, uint price, Currency unit) public view returns (uint datacoinAmount) {}
     function buyFor(bytes32 productId, uint subscriptionSeconds, address recipient) public {}
 }
 
-contract IERC20Token {
-    // these functions aren't abstract since the compiler emits automatically generated getter functions as external
-    function name() public view returns (string) {}
-    function symbol() public view returns (string) {}
-    function decimals() public view returns (uint8) {}
-    function totalSupply() public view returns (uint256) {}
-    function balanceOf(address _owner) public view returns (uint256) { _owner; }
-    function allowance(address _owner, address _spender) public view returns (uint256) { _owner; _spender; }
-
-    function transfer(address _to, uint256 _value) public returns (bool success);
-    function transferFrom(address _from, address _to, uint256 _value) public returns (bool success);
-    function approve(address _spender, uint256 _value) public returns (bool success);
+interface IERC20Token {
+    function name() external view returns (string memory);
+    function symbol() external view returns (string memory);
+    function decimals() external view returns (uint8);
+    function totalSupply() external view returns (uint256);
+    function balanceOf(address _owner) external view returns (uint256);
+    function allowance(address _owner, address _spender) external view returns (uint256);
+    function transfer(address _to, uint256 _value) external returns (bool success);
+    function transferFrom(address _from, address _to, uint256 _value) external returns (bool success);
+    function approve(address _spender, uint256 _value) external returns (bool success);
 }
+
 
 
 //from https://docs.uniswap.io/smart-contract-integration/interface:
@@ -124,21 +123,21 @@ contract UniswapAdaptor {
     function getConversionRateInput(address from_token, address to_token, uint input_amount) public view returns (uint){
         require(from_token != to_token, "must specify different tokens ");
         uint eth_amount;
-        if(from_token == 0x0){
+        if(from_token == address(0)){
             eth_amount = input_amount;
         }
         else{
             address from_token_exchange = uniswap_factory.getExchange(from_token);
-            require(from_token_exchange != 0x0, "couldnt find exchange for from_token");
+            require(from_token_exchange != address(0), "couldnt find exchange for from_token");
             IUniswapExchange exfrom = IUniswapExchange(from_token_exchange);
             eth_amount = exfrom.getTokenToEthInputPrice(input_amount);
         }
-        if(to_token == 0x0){
+        if(to_token == address(0)){
             return eth_amount;
         }
         else{
             address to_token_exchange = uniswap_factory.getExchange(to_token);
-            require(to_token_exchange != 0x0, "couldnt find exchange for to_token");
+            require(to_token_exchange != address(0), "couldnt find exchange for to_token");
             IUniswapExchange exto = IUniswapExchange(to_token_exchange);
             return exto.getEthToTokenInputPrice(eth_amount);
         }
@@ -148,21 +147,21 @@ contract UniswapAdaptor {
     function getConversionRateOutput(address from_token, address to_token, uint output_amount) public view returns (uint){
         require(from_token != to_token, "must specify different tokens ");
         uint eth_amount;
-        if(to_token == 0x0){
+        if(to_token == address(0)){
             eth_amount = output_amount;
         }
         else{
             address to_token_exchange = uniswap_factory.getExchange(to_token);
-            require(to_token_exchange != 0x0, "couldnt find exchange for to_token");
+            require(to_token_exchange != address(0), "couldnt find exchange for to_token");
             IUniswapExchange exto = IUniswapExchange(to_token_exchange);
             eth_amount = exto.getEthToTokenOutputPrice(output_amount);
         }
-        if(from_token == 0x0){
+        if(from_token == address(0)){
             return eth_amount;
         }
         else{
             address from_token_exchange = uniswap_factory.getExchange(from_token);
-            require(from_token_exchange != 0x0, "couldnt find exchange for from_token");
+            require(from_token_exchange != address(0), "couldnt find exchange for from_token");
             IUniswapExchange exfrom = IUniswapExchange(from_token_exchange);
             return exfrom.getTokenToEthOutputPrice(eth_amount);
         }
@@ -171,11 +170,11 @@ contract UniswapAdaptor {
 
     function _getPricePerSecondData(bytes32 productId) internal view returns (uint) {
         (, address owner,, uint pricePerSecond, IMarketplace.Currency priceCurrency,,) = marketplace.getProduct(productId);
-        require(owner != 0x0, "not found");
+        require(owner != address(0), "not found");
         return marketplace.getPriceInData(1, pricePerSecond, priceCurrency);
     }
     function buyWithERC20(bytes32 productId, uint minSubscriptionSeconds,uint timeWindow, address erc20_address, uint amount) public {
-        require(erc20_address != 0x0, "use buyWithETH instead");
+        require(erc20_address != address(0), "use buyWithETH instead");
         uint pricePerSecondData = _getPricePerSecondData(productId);
         if(pricePerSecondData == 0x0){
             //subscription is free. return payment and subscribe
@@ -187,7 +186,7 @@ contract UniswapAdaptor {
         // use the exchange of the received token. this exchange will query its factory to find
         // the DATAcoin exchange in tokenToTokenTransferInput() in _buyWithUniswap()
         address exadd = uniswap_factory.getExchange(erc20_address);
-        require(exadd != 0x0, "couldnt find exchange for exchanged token");
+        require(exadd != address(0), "couldnt find exchange for exchanged token");
         require(fromToken.approve(exadd, 0), "approval failed");
         require(fromToken.approve(exadd, amount), "approval failed");
         _buyWithUniswap(exadd, productId, minSubscriptionSeconds, timeWindow, pricePerSecondData, amount, erc20_address);
@@ -204,19 +203,19 @@ contract UniswapAdaptor {
             return;
         }
         address exadd = uniswap_factory.getExchange(address(datacoin));
-        require(exadd != 0x0, "couldnt find exchange for DATA coin");
-        _buyWithUniswap(exadd, productId, minSubscriptionSeconds, timeWindow, pricePerSecondData, msg.value,0x0);
+        require(exadd != address(0), "couldnt find exchange for DATA coin");
+        _buyWithUniswap(exadd, productId, minSubscriptionSeconds, timeWindow, pricePerSecondData, msg.value, address(0));
     }
     /**
         from_token = 0x0 means ETH
      */
-    function _buyWithUniswap(address exadd, bytes32 productId, uint minSubscriptionSeconds,uint timeWindow, uint pricePerSecondData,uint amount,address from_token) internal{
+    function _buyWithUniswap(address exadd, bytes32 productId, uint minSubscriptionSeconds, uint timeWindow, uint pricePerSecondData, uint amount, address from_token) internal{
         uint price = mul(pricePerSecondData,minSubscriptionSeconds);
         IUniswapExchange ex = IUniswapExchange(exadd);
         uint256 datacoin_before_transfer = datacoin.balanceOf(address(this));
         // TransferInput should revert if it cant get at least 'price' amount of DATAcoin 
         uint256 received_datacoin;
-        if(from_token == 0x0){
+        if(from_token == address(0)){
             received_datacoin = ex.ethToTokenTransferInput.value(amount)(price,now + timeWindow, address(this));
         }
         else{

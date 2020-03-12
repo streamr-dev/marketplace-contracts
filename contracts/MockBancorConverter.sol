@@ -1,21 +1,20 @@
 
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.16;
 
-contract IERC20Token {
-	// these functions aren't abstract since the compiler emits automatically generated getter functions as external
-    function name() public view returns (string) {}
-    function symbol() public view returns (string) {}
-    function decimals() public view returns (uint8) {}
-    function totalSupply() public view returns (uint256) {}
-    function balanceOf(address _owner) public view returns (uint256) { _owner; }
-    function allowance(address _owner, address _spender) public view returns (uint256) { _owner; _spender; }
-    function transfer(address _to, uint256 _value) public returns (bool success);
-    function transferFrom(address _from, address _to, uint256 _value) public returns (bool success);
-    function approve(address _spender, uint256 _value) public returns (bool success);
+interface IERC20Token {
+    function name() external view returns (string memory);
+    function symbol() external view returns (string memory);
+    function decimals() external view returns (uint8);
+    function totalSupply() external view returns (uint256);
+    function balanceOf(address _owner) external view returns (uint256);
+    function allowance(address _owner, address _spender) external view returns (uint256);
+    function transfer(address _to, uint256 _value) external returns (bool success);
+    function transferFrom(address _from, address _to, uint256 _value) external returns (bool success);
+    function approve(address _spender, uint256 _value) external returns (bool success);
 }
 
 contract IBancorConverter {
-    function quickConvert(IERC20Token[] _path, uint256 _amount, uint256 _minReturn) public payable returns (uint256) {}
+    function quickConvert(IERC20Token[] memory _path, uint256 _amount, uint256 _minReturn) public payable returns (uint256) {}
 }
 
 /**
@@ -23,7 +22,7 @@ tranfers amount of IERC20Token[0] to this contract, and transfers same amount of
  */
 
 contract MockBancorConverter is IBancorConverter {
-    function quickConvert(IERC20Token[] _path, uint256 _amount, uint256 _minReturn) public payable returns (uint256) {
+    function quickConvert(IERC20Token[] memory _path, uint256 _amount, uint256 _minReturn) public payable returns (uint256) {
         IERC20Token toToken = _path[_path.length-1];
         require(_amount >= _minReturn, "error_minreturn");
         if(msg.value > 0){

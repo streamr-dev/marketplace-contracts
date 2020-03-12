@@ -44,30 +44,28 @@ contract("BancorAdaptor", accounts => {
         it("too many seconds fails", async () => {
             let path = [fromToken.address, dataToken.address]
             // will return 10 data coin, which pays for 10s
-            await assertFails(bancorAdaptor.buyWithETH(productId, path, 11, { from: buyer, value: w3.utils.toWei("10") }), "error_minreturn")
+            await assertFails(bancorAdaptor.buyWithETH(productId, path, 11, { from: buyer, value: w3.utils.toWei("10") }))
         })
 
         it("can buy product with ETH", async () => {
             // path[0] is ignored when converting from ETH with MockBancorConverter
             let path = [fromToken.address, dataToken.address]
-            const [validBefore, endtimeBefore] = await market.getSubscription(productId, buyer, { from: buyer })
-            validBefore // eslint fix
+            const subBefore = await market.getSubscription(productId, buyer, { from: buyer })
             await bancorAdaptor.buyWithETH(productId, path, 9, { from: buyer, value: w3.utils.toWei("10") })
-            const [validAfter, endtimeAfter] = await market.getSubscription(productId, buyer, { from: buyer })
-            assert(validAfter)
-            assert(endtimeAfter - endtimeBefore > 10 - testToleranceSeconds)
+            const subAfter = await market.getSubscription(productId, buyer, { from: buyer })
+            assert(subAfter.isValid)
+            assert(subAfter.endTimestamp - subBefore.endTimestamp > 10 - testToleranceSeconds)
         })
 
         it("can buy product with ERC20", async () => {
             let path = [fromToken.address, dataToken.address]
-            const [validBefore, endtimeBefore] = await market.getSubscription(productId, buyer, { from: buyer })
-            validBefore // eslint fix
+            const subBefore = await market.getSubscription(productId, buyer, { from: buyer })
             let value = w3.utils.toWei("10")
             await fromToken.approve(bancorAdaptor.address, value, { from: buyer })
             await bancorAdaptor.buyWithERC20(productId, path, 9, value, { from: buyer })
-            const [validAfter, endtimeAfter] = await market.getSubscription(productId, buyer, { from: buyer })
-            assert(validAfter)
-            assert(endtimeAfter - endtimeBefore > 10 - testToleranceSeconds)
+            const subAfter = await market.getSubscription(productId, buyer, { from: buyer })
+            assert(subAfter.isValid)
+            assert(subAfter.endTimestamp - subBefore.endTimestamp > 10 - testToleranceSeconds)
         })
 
     })

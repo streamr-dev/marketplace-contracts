@@ -7,8 +7,8 @@ module.exports = async (deployer, network) => {
     const streamrUpdaterAddress = "0xb6aA9D2708475fB026a8052E20e63AeA23233613"
     const ownerAddress = mainnet ? "0x1bb7804d12fa4f70ab63d0bbe8cb0b1992694338" : "0x3F2dA479B77cB583C3462577DCD2e89B965fe987"
     //there isn't a previous testnet marketplace
-    const marketplaceAddress = mainnet ? "0xa10151d088f6f2705a05d6c83719e99e079a61c1":"0x0"
-    await deployer.deploy(Marketplace, datacoinAddress, streamrUpdaterAddress, marketplaceAddress, { gas: 6000000 })
+    const marketplaceAddress = mainnet ? "0xa10151d088f6f2705a05d6c83719e99e079a61c1": "0x0000000000000000000000000000000000000000"
+    await deployer.deploy(Marketplace, datacoinAddress, streamrUpdaterAddress, marketplaceAddress, { gas: 6700000 })
     // await deployer.deploy(Community, Marketplace.deployed().address, { gas: 6000000 })
-    Marketplace.deployed().then(m => m.transferOwnership(ownerAddress, { gas: 40000 }))
+    Marketplace.deployed().then(m => m.transferOwnership(ownerAddress, { gas: 400000 }))
 }

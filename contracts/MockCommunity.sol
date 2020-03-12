@@ -1,4 +1,4 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.16;
 
 import "./PurchaseListener.sol";
 
@@ -12,9 +12,14 @@ import "openzeppelin-solidity/contracts/token/ERC20/ERC20Mintable.sol";
  */
 contract MockCommunity is PurchaseListener {
     event PurchaseRegistered();
- 
+
+    bool public onPurchaseReturn = true;
+
     function onPurchase(bytes32, address, uint, uint, uint) external returns (bool) {
         emit PurchaseRegistered();
-        return true;
+        return onPurchaseReturn;
+    }
+    function setReturnVal(bool val) public{
+        onPurchaseReturn = val;
     }
 }

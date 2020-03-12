@@ -7,8 +7,7 @@ const ERC20Mintable = artifacts.require("zeppelin-solidity/contracts/token/ERC20
 
 const { Marketplace: { ProductState, Currency } } = require("../src/contracts/enums")
 
-const { assertEvent, assertEqual, assertFails, assertEventBySignature, now } = require("./testHelpers")
-
+const { assertReturnValueEqual, assertEvent, assertEqual, assertFails, assertEventBySignature, now } = require("./testHelpers")
 contract("Marketplace2", accounts => {
     let market
     let market2
@@ -29,10 +28,12 @@ contract("Marketplace2", accounts => {
     describe("Creating, deleting products in market1 and market2", () => {
         //product created in market1
         let id1 = "test1"
+        let id1bytes = web3.utils.padLeft(web3.utils.asciiToHex(id1), 64)
         //product created in market2
         let id2 = "test2"
+        let id2bytes = web3.utils.padLeft(web3.utils.asciiToHex(id2), 64)
         it("creates a product with correct params", async () => {
-            const res = await market.createProduct(id1, id1, accounts[0], 1, Currency.DATA, 1, { from: accounts[0] })
+            const res = await market.createProduct(id1bytes, id1, accounts[0], 1, Currency.DATA, 1, { from: accounts[0] })
             assertEvent(res, "ProductCreated", {
                 owner: accounts[0],
                 id: id1,
@@ -42,9 +43,9 @@ contract("Marketplace2", accounts => {
                 currency: Currency.DATA,
                 minimumSubscriptionSeconds: 1,
             })
-            assertEqual(await market2.getProduct(id1), [id1, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed, false])
+            assertReturnValueEqual(await market2.getProduct(id1bytes), [id1, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed, false])
 
-            const res2 = await market2.createProduct(id2, id2, accounts[0], 1, Currency.DATA, 1, { from: accounts[0] })
+            const res2 = await market2.createProduct(id2bytes, id2, accounts[0], 1, Currency.DATA, 1, { from: accounts[0] })
             assertEvent(res2, "ProductCreated", {
                 owner: accounts[0],
                 id: id2,
@@ -54,49 +55,49 @@ contract("Marketplace2", accounts => {
                 currency: Currency.DATA,
                 minimumSubscriptionSeconds: 1,
             })
-            assertEqual(await market2.getProduct(id2), [id2, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed, false])
+            assertReturnValueEqual(await market2.getProduct(id2bytes), [id2, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed, false])
         })
 
         it("Marketplace2.getProduct() works using Marketplace1 ABI", async () => {
-            assertEqual(await market2using1api.getProduct(id2), [id2, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed])
+            assertReturnValueEqual(await market2using1api.getProduct(id2bytes), [id2, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed])
         })
 
         it("will not accept empty product ID", async () => {
-            await assertFails(market2.createProduct("", "test", accounts[0], 1, Currency.DATA, 1, { from: accounts[1] }))
+            await assertFails(market2.createProduct(web3.utils.asciiToHex(""), "test", accounts[0], 1, Currency.DATA, 1, { from: accounts[1] }))
         })
 
         it("can only be deleted/modified by owner", async () => {
-            await assertFails(market2.deleteProduct(id1, { from: accounts[1] }))
-            await assertFails(market2.updateProduct(id1, "lol", accounts[3], 2, Currency.USD, 2, { from: accounts[1] }))
-            await assertFails(market2.offerProductOwnership(id1, accounts[1], { from: accounts[1] }))
-            await assertFails(market2.deleteProduct(id2, { from: accounts[1] }))
-            await assertFails(market2.updateProduct(id2, "lol", accounts[3], 2, Currency.USD, 2, { from: accounts[1] }))
-            await assertFails(market2.offerProductOwnership(id2, accounts[1], { from: accounts[1] }))
+            await assertFails(market2.deleteProduct(id1bytes, { from: accounts[1] }))
+            await assertFails(market2.updateProduct(id1bytes, "lol", accounts[3], 2, Currency.USD, 2, { from: accounts[1] }))
+            await assertFails(market2.offerProductOwnership(id1bytes, accounts[1], { from: accounts[1] }))
+            await assertFails(market2.deleteProduct(id2bytes, { from: accounts[1] }))
+            await assertFails(market2.updateProduct(id2bytes, "lol", accounts[3], 2, Currency.USD, 2, { from: accounts[1] }))
+            await assertFails(market2.offerProductOwnership(id2bytes, accounts[1], { from: accounts[1] }))
         })
 
         it("deletes the previously created product", async () => {
-            assertEvent(await market2.deleteProduct(id1, { from: accounts[0] }), "ProductDeleted")
-            assertEqual(await market2.getProduct(id1), [id1, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.NotDeployed, false])
-            assertEvent(await market2.deleteProduct(id2, { from: accounts[0] }), "ProductDeleted")
-            assertEqual(await market2.getProduct(id2), [id2, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.NotDeployed, false])
+            assertEvent(await market2.deleteProduct(id1bytes, { from: accounts[0] }), "ProductDeleted")
+            assertReturnValueEqual(await market2.getProduct(id1bytes), [id1, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.NotDeployed, false])
+            assertEvent(await market2.deleteProduct(id2bytes, { from: accounts[0] }), "ProductDeleted")
+            assertReturnValueEqual(await market2.getProduct(id2bytes), [id2, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.NotDeployed, false])
         })
 
         it("can only be redeployed by owner", async () => {
-            await assertFails(market2.redeployProduct(id1, { from: accounts[1] }))
-            await assertFails(market2.redeployProduct(id2, { from: accounts[1] }))
+            await assertFails(market2.redeployProduct(id1bytes, { from: accounts[1] }))
+            await assertFails(market2.redeployProduct(id2bytes, { from: accounts[1] }))
         })
 
         it("redeploys the previously deleted product", async () => {
-            const res = await market2.redeployProduct(id1, { from: accounts[0] })
+            const res = await market2.redeployProduct(id1bytes, { from: accounts[0] })
             assertEvent(res, "ProductRedeployed")
-            assertEqual(await market2.getProduct(id1), [id1, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed, false])
-            const res2 = await market2.redeployProduct(id2, { from: accounts[0] })
+            assertReturnValueEqual(await market2.getProduct(id1bytes), [id1, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed, false])
+            const res2 = await market2.redeployProduct(id2bytes, { from: accounts[0] })
             assertEvent(res2, "ProductRedeployed")
-            assertEqual(await market2.getProduct(id2), [id2, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed, false])
+            assertReturnValueEqual(await market2.getProduct(id2bytes), [id2, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed, false])
         })
 
         it("allows product be updated", async () => {
-            const res = await market2.updateProduct(id1, "lol", accounts[3], 2, Currency.USD, 2, { from: accounts[0] })
+            const res = await market2.updateProduct(id1bytes, "lol", accounts[3], 2, Currency.USD, 2, { from: accounts[0] })
             assertEvent(res, "ProductUpdated", {
                 owner: accounts[0],
                 id: id1,
@@ -105,8 +106,8 @@ contract("Marketplace2", accounts => {
                 pricePerSecond: 2,
                 minimumSubscriptionSeconds: 2,
             })
-            assertEqual(await market2.getProduct(id1), ["lol", accounts[0], accounts[3], 2, Currency.USD, 2, ProductState.Deployed, false])
-            const res2 = await market2.updateProduct(id2, "lol", accounts[3], 2, Currency.USD, 2, { from: accounts[0] })
+            assertReturnValueEqual(await market2.getProduct(id1bytes), ["lol", accounts[0], accounts[3], 2, Currency.USD, 2, ProductState.Deployed, false])
+            const res2 = await market2.updateProduct(id2bytes, "lol", accounts[3], 2, Currency.USD, 2, { from: accounts[0] })
             assertEvent(res2, "ProductUpdated", {
                 owner: accounts[0],
                 id: id2,
@@ -115,44 +116,47 @@ contract("Marketplace2", accounts => {
                 pricePerSecond: 2,
                 minimumSubscriptionSeconds: 2,
             })
-            assertEqual(await market2.getProduct(id2), ["lol", accounts[0], accounts[3], 2, Currency.USD, 2, ProductState.Deployed, false])
+            assertReturnValueEqual(await market2.getProduct(id2bytes), ["lol", accounts[0], accounts[3], 2, Currency.USD, 2, ProductState.Deployed, false])
         })
 
         it("allows ownership be transferred", async () => {
-            assertEvent(await market2.offerProductOwnership(id1, accounts[1], { from: accounts[0] }), "ProductOwnershipOffered", {
+            assertEvent(await market2.offerProductOwnership(id1bytes, accounts[1], { from: accounts[0] }), "ProductOwnershipOffered", {
                 owner: accounts[0],
                 id: id1,
                 to: accounts[1],
             })
-            assertEvent(await market2.claimProductOwnership(id1, { from: accounts[1] }), "ProductOwnershipChanged", {
+            assertEvent(await market2.claimProductOwnership(id1bytes, { from: accounts[1] }), "ProductOwnershipChanged", {
                 newOwner: accounts[1],
                 id: id1,
                 oldOwner: accounts[0],
             })
-            assertEqual(await market2.getProduct(id1), ["lol", accounts[1], accounts[3], 2, Currency.USD, 2, ProductState.Deployed, false])
-            assertEvent(await market2.offerProductOwnership(id2, accounts[1], { from: accounts[0] }), "ProductOwnershipOffered", {
+            assertReturnValueEqual(await market2.getProduct(id1bytes), ["lol", accounts[1], accounts[3], 2, Currency.USD, 2, ProductState.Deployed, false])
+            assertEvent(await market2.offerProductOwnership(id2bytes, accounts[1], { from: accounts[0] }), "ProductOwnershipOffered", {
                 owner: accounts[0],
                 id: id2,
                 to: accounts[1],
             })
-            assertEvent(await market2.claimProductOwnership(id2, { from: accounts[1] }), "ProductOwnershipChanged", {
+            assertEvent(await market2.claimProductOwnership(id2bytes, { from: accounts[1] }), "ProductOwnershipChanged", {
                 newOwner: accounts[1],
                 id: id2,
                 oldOwner: accounts[0],
             })
-            assertEqual(await market2.getProduct(id2), ["lol", accounts[1], accounts[3], 2, Currency.USD, 2, ProductState.Deployed, false])
+            assertReturnValueEqual(await market2.getProduct(id2bytes), ["lol", accounts[1], accounts[3], 2, Currency.USD, 2, ProductState.Deployed, false])
         })
 
         it("claiming fails if not designated as newOwnerCandidate", async () => {
-            await assertFails(market2.claimProductOwnership(id1, { from: accounts[1] }))
-            await assertFails(market2.claimProductOwnership(id2, { from: accounts[1] }))
+            await assertFails(market2.claimProductOwnership(id1bytes, { from: accounts[1] }))
+            await assertFails(market2.claimProductOwnership(id2bytes, { from: accounts[1] }))
         })
     })
 
     describe("Whitelist", () => {
         //product created in 1, subcription bought in 1
-        const productId = "test_wl"
-        const productId2 = "test_wl2"
+
+        const productId = web3.utils.padLeft(web3.utils.asciiToHex("test_wl"), 64)
+        const productId2 = web3.utils.padLeft(web3.utils.asciiToHex("test_wl2"), 64)
+
+
 
         before(async () => {
             await market2.createProductWithWhitelist(productId, "test", accounts[3], 1, Currency.DATA, 1, { from: accounts[0] })
@@ -213,6 +217,7 @@ contract("Marketplace2", accounts => {
             assertEvent(res2, "WhitelistRequested", {
                 subscriber: buyer
             })
+
             await assertFails(market2.buy(productId2, 100, { from: buyer }))
             const res3 = await market2.whitelistApprove(productId2, buyer, { from: accounts[0]})
             assertEvent(res3, "WhitelistApproved", {
@@ -243,13 +248,18 @@ contract("Marketplace2", accounts => {
     describe("Buying products", () => {
         let productId1
         let productId2
+        let productId1bytes
+        let productId2bytes
         let testIndex = 0
         beforeEach(async () => {
             productId1 = `test_buy1_${testIndex}`
             productId2 = `test_buy2_${testIndex}`
+            productId1bytes = web3.utils.padLeft(web3.utils.asciiToHex(productId1), 64)
+            productId2bytes = web3.utils.padLeft(web3.utils.asciiToHex(productId2), 64)
+
             testIndex += 1
-            await market.createProduct(productId1, productId1, accounts[3], 1, Currency.DATA, 1, { from: accounts[0] })
-            await market2.createProduct(productId2, productId2, accounts[3], 1, Currency.DATA, 1, { from: accounts[0] })
+            await market.createProduct(productId1bytes, productId1, accounts[3], 1, Currency.DATA, 1, { from: accounts[0] })
+            await market2.createProduct(productId2bytes, productId2, accounts[3], 1, Currency.DATA, 1, { from: accounts[0] })
 
         })
 
@@ -265,14 +275,14 @@ contract("Marketplace2", accounts => {
             assertEvent(res, "TxFeeChanged", {
                 newTxFee: fee,
             })
-            
+
             //enough approved with added fee
             await token.approve(market2.address, 0, { from: accounts[1] })
             await token.approve(market2.address, 1000, { from: accounts[1] })
             const ownerBefore = await token.balanceOf(admin)
             const sellerBefore = await token.balanceOf(accounts[3])
-            await market2.buy(productId1, 1000, { from: accounts[1] })
-            
+            await market2.buy(productId1bytes, 1000, { from: accounts[1] })
+
             /*
             NOTE assertEvent only tests for events in the executed contract, not ancillary contracts.
             So this doesn't work:
@@ -295,7 +305,7 @@ contract("Marketplace2", accounts => {
             assertEvent(res2, "TxFeeChanged", {
                 newTxFee: 0,
             })
-        
+
         })
 
         it("fails for bad arguments", async () => {
@@ -305,63 +315,106 @@ contract("Marketplace2", accounts => {
             await assertFails(market2.buy(productId2, 0, { from: accounts[1] }))
         })
 
+        it("txFee works", async () => {
+            const fee = w3.utils.toWei("0.25", "ether")
+            const res = await market2.setTxFee(fee, { from: admin })
+            assertEvent(res, "TxFeeChanged", {
+                newTxFee: fee,
+            })
+
+            //enough approved with added fee
+            await token.approve(market2.address, 0, { from: accounts[1] })
+            await token.approve(market2.address, 1000, { from: accounts[1] })
+            const ownerBefore = await token.balanceOf(admin)
+            const sellerBefore = await token.balanceOf(accounts[3])
+            await market2.buy(productId1bytes, 1000, { from: accounts[1] })
+
+            /*
+            NOTE assertEvent only tests for events in the executed contract, not ancillary contracts.
+            So this doesn't work:
+            assertEvent(buyres, "Transfer", {
+                _from: accounts[1],
+                _to: admin,
+                _value: 500
+            })
+
+            TODO: try to patch assertEvent to check ancillary contract events. See how truffle decodes.
+            */
+
+            // fee is correct
+            const ownerAfter = await token.balanceOf(admin)
+            const sellerAfter = await token.balanceOf(accounts[3])
+            assert(ownerAfter - ownerBefore == 250)
+            assert(sellerAfter - sellerBefore == 750)
+
+            const res2 = await market2.setTxFee(0, { from: admin })
+            assertEvent(res2, "TxFeeChanged", {
+                newTxFee: 0,
+            })
+
+        })
 
         it("fails for bad arguments", async () => {
-            await assertFails(market2.buy(productId1, 0, { from: accounts[0] }))
-            await assertFails(market2.buy(productId1, 0, { from: accounts[1] }))
-            await assertFails(market2.buy(productId2, 0, { from: accounts[0] }))
-            await assertFails(market2.buy(productId2, 0, { from: accounts[1] }))
+            await assertFails(market2.buy(productId1bytes, 0, { from: accounts[0] }))
+            await assertFails(market2.buy(productId1bytes, 0, { from: accounts[1] }))
+            await assertFails(market2.buy(productId2bytes, 0, { from: accounts[0] }))
+            await assertFails(market2.buy(productId2bytes, 0, { from: accounts[1] }))
         })
 
         it("fails if allowance not given", async () => {
-            await assertFails(market2.buy(productId1, 100, { from: accounts[0] }))
-            await assertFails(market2.buy(productId1, 100, { from: accounts[1] }))
-            await assertFails(market2.buy(productId2, 100, { from: accounts[0] }))
-            await assertFails(market2.buy(productId2, 100, { from: accounts[1] }))
+            await assertFails(market2.buy(productId1bytes, 100, { from: accounts[0] }))
+            await assertFails(market2.buy(productId1bytes, 100, { from: accounts[1] }))
+            await assertFails(market2.buy(productId2bytes, 100, { from: accounts[0] }))
+            await assertFails(market2.buy(productId2bytes, 100, { from: accounts[1] }))
         })
 
         it("fails if too little allowance was given", async () => {
             await token.approve(market2.address, 10, { from: accounts[1] })
-            await assertFails(market2.buy(productId1, 100, { from: accounts[1] }))
-            await assertFails(market2.buy(productId2, 100, { from: accounts[1] }))
+            await assertFails(market2.buy(productId1bytes, 100, { from: accounts[1] }))
+            await assertFails(market2.buy(productId2bytes, 100, { from: accounts[1] }))
 
         })
 
         it("works if enough allowance was given", async () => {
             await token.approve(market2.address, 1000, { from: accounts[1] })
-            const res = await market2.buy(productId1, 100, { from: accounts[1] })
+            const res = await market2.buy(productId1bytes, 100, { from: accounts[1] })
 
             // test complains about productId not being undefined:
             assertEvent(res, "NewSubscription", {
                 //               productId,
                 subscriber: accounts[1],
             })
-            assert(await market2.hasValidSubscription(productId1, accounts[1]), { from: accounts[0] })
+            assert(await market2.hasValidSubscription(productId1bytes, accounts[1]), { from: accounts[0] })
 
-            const res2 = await market2.buy(productId2, 100, { from: accounts[1] })
+            const res2 = await market2.buy(productId2bytes, 100, { from: accounts[1] })
             assertEvent(res2, "NewSubscription", {
                 //                productId,
                 subscriber: accounts[1],
             })
-            assert(await market2.hasValidSubscription(productId2, accounts[1]), { from: accounts[0] })
+            assert(await market2.hasValidSubscription(productId2bytes, accounts[1]), { from: accounts[0] })
 
         })
 
         it("activates a PurchaseListener", async () => {
             const listener = await MockCommunity.new(market2.address, { from: admin })
-            await market2.updateProduct(productId1, "test", listener.address, 1, Currency.DATA, 1, { from: accounts[0] })
-            const res = await market2.buy(productId1, 100, { from: accounts[1] })
+            await market2.updateProduct(productId1bytes, "test", listener.address, 1, Currency.DATA, 1, { from: accounts[0] })
+            const res = await market2.buy(productId1bytes, 100, { from: accounts[1] })
             assertEventBySignature(res, "PurchaseRegistered()")
-            await market2.updateProduct(productId2, "test", listener.address, 1, Currency.DATA, 1, { from: accounts[0] })
-            const res2 = await market2.buy(productId2, 100, { from: accounts[1] })
+            await market2.updateProduct(productId2bytes, "test", listener.address, 1, Currency.DATA, 1, { from: accounts[0] })
+            const res2 = await market2.buy(productId2bytes, 100, { from: accounts[1] })
             assertEventBySignature(res2, "PurchaseRegistered()")
+
+            //should check the return value of onPurchase and revert if false
+            await listener.setReturnVal(false, { from: accounts[0] })
+            await assertFails(market2.buy(productId1bytes, 100, { from: accounts[1] }))
+            await assertFails(market2.buy(productId2bytes, 100, { from: accounts[1] }))
         })
 
         it("can pay to non-PurchaseListener contracts", async () => {
             const seller = await Marketplace.new(token.address, currencyUpdateAgent, { from: admin })
             const balanceBefore = await token.balanceOf(seller.address, {from: accounts[0]})
-            await market2.updateProduct(productId1, "test", seller.address, 1, Currency.DATA, 1, { from: accounts[0] })
-            await market2.buy(productId1, 100, { from: accounts[1] })
+            await market2.updateProduct(productId1bytes, "test", seller.address, 1, Currency.DATA, 1, { from: accounts[0] })
+            await market2.buy(productId1bytes, 100, { from: accounts[1] })
             const balanceAfter = await token.balanceOf(seller.address, {from: accounts[0]})
             assert.strictEqual(+balanceBefore, 0)
             assert.strictEqual(+balanceAfter, 100)
@@ -370,8 +423,8 @@ contract("Marketplace2", accounts => {
         it("can pay to non-contract addresses", async () => {
             const sellerAddress = "0x1234567890123456789012345678901234567890"
             const balanceBefore = await token.balanceOf(sellerAddress, {from: accounts[0]})
-            await market2.updateProduct(productId1, "test", sellerAddress, 1, Currency.DATA, 1, { from: accounts[0] })
-            await market2.buy(productId1, 100, { from: accounts[1] })
+            await market2.updateProduct(productId1bytes, "test", sellerAddress, 1, Currency.DATA, 1, { from: accounts[0] })
+            await market2.buy(productId1bytes, 100, { from: accounts[1] })
             const balanceAfter = await token.balanceOf(sellerAddress, {from: accounts[0]})
             assert.strictEqual(+balanceBefore, 0)
             assert.strictEqual(+balanceAfter, 100)
@@ -381,11 +434,11 @@ contract("Marketplace2", accounts => {
     describe("Subscription", () => {
         const testToleranceSeconds = 5
         //product created in 1, subcription bought in 1
-        const productId1 = "test_sub"
+        const productId1 = web3.utils.padLeft(web3.utils.asciiToHex("test_sub"), 64)
         //product created in 2, subcription bought in 2
-        const productId2 = "test_sub2"
+        const productId2 = web3.utils.padLeft(web3.utils.asciiToHex("test_sub2"), 64)
         //product created in 1, subcription bought in 2
-        const productId12 = "test_sub12"
+        const productId12 = web3.utils.padLeft(web3.utils.asciiToHex("test_sub12"), 64)
         before(async () => {
             await market.createProduct(productId1, "test", accounts[3], 1, Currency.DATA, 1, { from: accounts[0] })
             await market.createProduct(productId12, "test", accounts[3], 1, Currency.DATA, 1, { from: accounts[0] })
@@ -406,37 +459,37 @@ contract("Marketplace2", accounts => {
 
         it("grant works for owner", async () => {
             async function testGrant(_productId) {
-                const [validBefore, endtimeBefore] = await market2.getSubscriptionTo(_productId, { from: accounts[5] })
-                validBefore // eslint fix
+                const subBefore = await market2.getSubscriptionTo(_productId, { from: accounts[5] })
                 market2.grantSubscription(_productId, 100, accounts[5], { from: accounts[0] })
-                const [validAfter, endtimeAfter] = await market2.getSubscriptionTo(_productId, { from: accounts[5] })
-                assert(validAfter)
-                assert(endtimeAfter - endtimeBefore > 100 - testToleranceSeconds)
+                const subAfter = await market2.getSubscriptionTo(_productId, { from: accounts[5] })
+                assert(subAfter.isValid)
+                assert(subAfter.endTimestamp - subBefore.endTimestamp > 100 - testToleranceSeconds)
             }
-            testGrant(productId1)
-            testGrant(productId2)
-            testGrant(productId12)
+            await testGrant(productId1)
+            await testGrant(productId2)
+            await testGrant(productId12)
         })
 
         it("can be extended", async () => {
             async function testExtension(pid) {
-                const [validBefore, endtimeBefore] = await market2.getSubscriptionTo(pid, { from: accounts[1] })
-                assert(validBefore)
+                const subBefore = await market2.getSubscriptionTo(pid, { from: accounts[1] })
+                assert(subBefore.isValid)
                 await market2.buy(pid, 100, { from: accounts[1] })
-                const [validAfter, endtimeAfter] = await market2.getSubscriptionTo(pid, { from: accounts[1] })
-                assert(validAfter)
-                assert(endtimeAfter - endtimeBefore > 100 - testToleranceSeconds)
+                const subAfter = await market2.getSubscriptionTo(pid, { from: accounts[1] })
+                assert(subAfter.isValid)
+                assert(subAfter.endTimestamp - subBefore.endTimestamp > 100 - testToleranceSeconds)
             }
-            testExtension(productId1)
-            testExtension(productId2)
-            testExtension(productId12)
+            await testExtension(productId1)
+            await testExtension(productId2)
+            await testExtension(productId12)
         })
 
     })
 
     describe("Currency exchange rates", () => {
         before(async () => {
-            await market2.createProduct("test_currencies", "test", accounts[3], 1, Currency.USD, 1, { from: accounts[0] })
+            const id = web3.utils.padLeft(web3.utils.asciiToHex("test_currencies"), 64)
+            await market2.createProduct(id, "test", accounts[3], 1, Currency.USD, 1, { from: accounts[0] })
         })
 
         it("can not be set by non-currencyUpdateAgent", async () => {
@@ -445,22 +498,23 @@ contract("Marketplace2", accounts => {
 
         it("getters report the correct rates", async () => {
             assertEqual(await market2.dataPerUsd(), 0.1e18)
-            await market2.updateExchangeRates(now(), 3e18, { from: currencyUpdateAgent })
+            await market2.updateExchangeRates(now(), web3.utils.toBN(3e18), { from: currencyUpdateAgent })
             assertEqual(await market2.dataPerUsd(), 3e18)
         })
 
         it("getPriceInData calculates prices correctly", async () => {
-            await market2.updateExchangeRates(now(), 3e18, { from: currencyUpdateAgent })
-            assertEqual(await market2.getPriceInData(13, 1e18, Currency.DATA), 13e18)
-            assertEqual(await market2.getPriceInData(13, 1e18, Currency.USD), 39e18)
+            await market2.updateExchangeRates(now(), web3.utils.toBN(3e18), { from: currencyUpdateAgent })
+            assertEqual(await market2.getPriceInData(web3.utils.toBN(13), web3.utils.toBN(1e18), Currency.DATA), 13e18)
+            assertEqual(await market2.getPriceInData(web3.utils.toBN(13), web3.utils.toBN(1e18), Currency.USD), 39e18)
         })
 
         it("determine product price", async () => {
+            const id = web3.utils.padLeft(web3.utils.asciiToHex("test_currencies"), 64)
             await token.approve(market2.address, 1000, { from: accounts[1] })
-            await market2.updateExchangeRates(now(), 10e18, { from: currencyUpdateAgent })
-            await assertFails(market2.buy("test_currencies", 200, { from: accounts[1] }))
-            await market2.updateExchangeRates(now(), 3e18, { from: currencyUpdateAgent })
-            assertEvent(await market2.buy("test_currencies", 200, { from: accounts[1] }), "Subscribed")
+            await market2.updateExchangeRates(now(), web3.utils.toBN(10e18), { from: currencyUpdateAgent })
+            await assertFails(market2.buy(id, 200, { from: accounts[1] }))
+            await market2.updateExchangeRates(now(), web3.utils.toBN(3e18), { from: currencyUpdateAgent })
+            assertEvent(await market2.buy(id, 200, { from: accounts[1] }), "Subscribed")
             assertEqual(await token.allowance(accounts[1], market2.address), 1000 - (200 * 3))
         })
     })
@@ -474,20 +528,25 @@ contract("Marketplace2", accounts => {
         })
 
         it("can halt product creation and buying except for the owner", async () => {
-            await market2.createProduct("test_admin_halt", "test", accounts[3], 1, Currency.USD, 1, { from: accounts[0] })
+            const id = web3.utils.padLeft(web3.utils.asciiToHex("test_admin_halt"), 64)
+            const id2 = web3.utils.padLeft(web3.utils.asciiToHex("test_admin_halt2"), 64)
+            const id3 = web3.utils.padLeft(web3.utils.asciiToHex("test_admin_halt3"), 64)
+            const id4 = web3.utils.padLeft(web3.utils.asciiToHex("test_admin_halt4"), 64)
+
+            await market2.createProduct(id, "test", accounts[3], 1, Currency.USD, 1, { from: accounts[0] })
             await token.approve(market2.address, 1000, { from: accounts[2] })
             await token.approve(market2.address, 1000, { from: admin })
-            await market2.buy("test_admin_halt", 100, { from: accounts[2] })
+            await market2.buy(id, 100, { from: accounts[2] })
 
             await market2.halt({ from: admin })
-            await assertFails(market2.createProduct("test_admin_halt2", "test", accounts[3], 1, Currency.USD, 1, { from: accounts[0] }))
-            await assertFails(market2.buy("test_admin_halt", 100, { from: accounts[2] }))
-            await market2.createProduct("test_admin_halt3", "test", accounts[3], 1, Currency.USD, 1, { from: admin })
-            await market2.buy("test_admin_halt", 100, { from: admin })
+            await assertFails(market2.createProduct(id2, "test", accounts[3], 1, Currency.USD, 1, { from: accounts[0] }))
+            await assertFails(market2.buy(id, 100, { from: accounts[2] }))
+            await market2.createProduct(id3, "test", accounts[3], 1, Currency.USD, 1, { from: admin })
+            await market2.buy(id, 100, { from: admin })
 
             await market2.resume({ from: admin })
-            await market2.createProduct("test_admin_halt4", "test", accounts[3], 1, Currency.USD, 1, { from: accounts[0] })
-            await market2.buy("test_admin_halt4", 100, { from: accounts[2] })
+            await market2.createProduct(id4, "test", accounts[3], 1, Currency.USD, 1, { from: accounts[0] })
+            await market2.buy(id4, 100, { from: accounts[2] })
         })
 
 
@@ -508,8 +567,8 @@ contract("Marketplace2", accounts => {
                 await market2.claimProductOwnership(_productId, { from: accounts[0] })
 
             }
-            let productId1 = "test_admin_halt_transfer1"
-            let productId2 = "test_admin_halt_transfer2"
+            let productId1 = web3.utils.padLeft(web3.utils.asciiToHex("test_admin_halt_transfer1"), 64)
+            let productId2 = web3.utils.padLeft(web3.utils.asciiToHex("test_admin_halt_transfer2"), 64)
 
             await market.createProduct(productId1, "test", accounts[3], 1, Currency.USD, 1, { from: accounts[0] })
             await market2.createProduct(productId2, "test", accounts[3], 1, Currency.USD, 1, { from: accounts[0] })
@@ -540,8 +599,9 @@ contract("Marketplace2", accounts => {
                 await market2.offerProductOwnership(_productId, admin, { from: admin })
             }
 
-            const productId1 = "test_admin_control1"
-            const productId2 = "test_admin_control2"
+            let productId1 = web3.utils.padLeft(web3.utils.asciiToHex("test_admin_control1"), 64)
+            let productId2 = web3.utils.padLeft(web3.utils.asciiToHex("test_admin_control2"), 64)
+
             await market.createProduct(productId1, productId1, accounts[3], 1, Currency.USD, 1, { from: accounts[0] })
             await market2.createProduct(productId2, productId2, accounts[3], 1, Currency.USD, 1, { from: accounts[0] })
 
@@ -550,18 +610,22 @@ contract("Marketplace2", accounts => {
         })
 
         it("can be transferred", async () => {
+            let productId = web3.utils.padLeft(web3.utils.asciiToHex("test_admin_transfer"), 64)
+            let productId2 = web3.utils.padLeft(web3.utils.asciiToHex("test_admin_transfer2"), 64)
+
+
             await assertFails(market2.halt({ from: accounts[0] }))
             market2.transferOwnership(accounts[0], { from: admin })
             market2.claimOwnership({ from: accounts[0] })
             await market2.halt({ from: accounts[0] })
-            await assertFails(market2.createProduct("test_admin_transfer", "test", accounts[3], 1, Currency.USD, 1, { from: accounts[1] }))
-            await assertFails(market2.createProduct("test_admin_transfer", "test", accounts[3], 1, Currency.USD, 1, { from: admin }))
-            await market2.createProduct("test_admin_transfer", "test", accounts[3], 1, Currency.USD, 1, { from: accounts[0] })
+            await assertFails(market2.createProduct(productId, "test", accounts[3], 1, Currency.USD, 1, { from: accounts[1] }))
+            await assertFails(market2.createProduct(productId, "test", accounts[3], 1, Currency.USD, 1, { from: admin }))
+            await market2.createProduct(productId, "test", accounts[3], 1, Currency.USD, 1, { from: accounts[0] })
             market2.transferOwnership(admin, { from: accounts[0] })
             market2.claimOwnership({ from: admin })
             await assertFails(market2.resume({ from: accounts[0] }))
             await market2.resume({ from: admin })
-            await market2.createProduct("test_admin_transfer2", "test", accounts[3], 1, Currency.USD, 1, { from: accounts[1] })
+            await market2.createProduct(productId2, "test", accounts[3], 1, Currency.USD, 1, { from: accounts[1] })
         })
     })
 })

@@ -1,23 +1,21 @@
-pragma solidity ^0.4.25;
+pragma solidity ^0.5.16;
 
 import "./Marketplace.sol";
 
-contract IERC20Token {
-    // these functions aren't abstract since the compiler emits automatically generated getter functions as external
-    function name() public view returns (string) {}
-    function symbol() public view returns (string) {}
-    function decimals() public view returns (uint8) {}
-    function totalSupply() public view returns (uint256) {}
-    function balanceOf(address _owner) public view returns (uint256) { _owner; }
-    function allowance(address _owner, address _spender) public view returns (uint256) { _owner; _spender; }
-
-    function transfer(address _to, uint256 _value) public returns (bool success);
-    function transferFrom(address _from, address _to, uint256 _value) public returns (bool success);
-    function approve(address _spender, uint256 _value) public returns (bool success);
+interface IERC20Token {
+    function name() external view returns (string memory);
+    function symbol() external view returns (string memory);
+    function decimals() external view returns (uint8);
+    function totalSupply() external view returns (uint256);
+    function balanceOf(address _owner) external view returns (uint256);
+    function allowance(address _owner, address _spender) external view returns (uint256);
+    function transfer(address _to, uint256 _value) external returns (bool success);
+    function transferFrom(address _from, address _to, uint256 _value) external returns (bool success);
+    function approve(address _spender, uint256 _value) external returns (bool success);
 }
 
-contract IBancorConverter {
-    function quickConvert(IERC20Token[] _path, uint256 _amount, uint256 _minReturn) public payable returns (uint256) {}
+interface IBancorConverter {
+    function quickConvert(IERC20Token[] calldata _path, uint256 _amount, uint256 _minReturn) external payable returns (uint256);
 }
 
 
@@ -39,12 +37,12 @@ contract BancorAdaptor {
 	*/
     function _getPricePerSecond(bytes32 productId) internal view returns (uint) {
         (, address owner,, uint pricePerSecond, Marketplace.Currency priceCurrency,,,) = marketplace.getProduct(productId);
-        require(owner != 0x0, "not found");
+        require(owner != address(0), "not found");
         return marketplace.getPriceInData(1, pricePerSecond, priceCurrency);
     }
 
-    function _buyUsingBancor(bytes32 productId, IERC20Token[] bancor_conversion_path, uint minSubscriptionSeconds, uint amount, uint pricePerSecond, bool isEth) internal {
-        require(bancor_conversion_path[bancor_conversion_path.length - 1] == address(datacoin), "must convert to DATAcoin");
+    function _buyUsingBancor(bytes32 productId, IERC20Token[] memory bancor_conversion_path, uint minSubscriptionSeconds, uint amount, uint pricePerSecond, bool isEth) internal {
+        require(address(bancor_conversion_path[bancor_conversion_path.length - 1]) == address(datacoin), "must convert to DATAcoin");
         require(pricePerSecond > 0, "buyUsingBancor requires pricePerSecond > 0");
         uint min_datacoin = pricePerSecond.mul(minSubscriptionSeconds);
         uint256 datacoin_before_transfer = datacoin.balanceOf(address(this));
@@ -57,7 +55,7 @@ contract BancorAdaptor {
         marketplace.buyFor(productId,received_datacoin.div(pricePerSecond),msg.sender);
     }
 
-    function buyWithETH(bytes32 productId,IERC20Token[] bancor_conversion_path,uint minSubscriptionSeconds) public payable{
+    function buyWithETH(bytes32 productId,IERC20Token[] memory bancor_conversion_path,uint minSubscriptionSeconds) public payable{
         uint pricePerSecond = _getPricePerSecond(productId);
 
         if(pricePerSecond == 0x0){
@@ -71,7 +69,7 @@ contract BancorAdaptor {
         _buyUsingBancor(productId, bancor_conversion_path, minSubscriptionSeconds, msg.value, pricePerSecond, true);
     }
 
-    function buyWithERC20(bytes32 productId,IERC20Token[] bancor_conversion_path,uint minSubscriptionSeconds, uint amount) public{
+    function buyWithERC20(bytes32 productId,IERC20Token[] memory bancor_conversion_path,uint minSubscriptionSeconds, uint amount) public{
         uint pricePerSecond = _getPricePerSecond(productId);
         if(pricePerSecond == 0x0){
             //subscription is free. return payment and subscribe
