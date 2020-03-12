@@ -7,6 +7,7 @@
     "build": "truffle compile && ./flatten",
     "deploy": "truffle migrate",
     "lint": "./node_modules/.bin/eslint src test && ./node_modules/.bin/solhint contracts/**/*.sol",
+    "coverage": "truffle run coverage",
     "test": "npm run clean && truffle compile && truffle test"
   },
   "author": "",
@@ -20,6 +21,7 @@
     "solhint": "^2.0.0",
     "truffle": "5.1.16",
     "truffle-flattener": "1.4.2",
+    "solidity-coverage": "^0.7.2",
     "web3": "1.2.6"
   }
 }
