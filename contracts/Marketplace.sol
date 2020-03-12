@@ -401,7 +401,7 @@ contract Marketplace is Ownable, IMarketplace2 {
             );
 
             if (success) {
-                bool accepted = abi.decode(returnData, bool);
+                (bool accepted) = abi.decode(returnData, (bool));
                 require(accepted, "error_rejectedBySeller");
             }
         }

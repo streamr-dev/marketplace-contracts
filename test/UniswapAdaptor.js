@@ -101,7 +101,7 @@ contract("UniswapAdaptor", accounts => {
             const subAfter = await market.getSubscription(productId, buyer, { from: buyer })
             assert(subAfter.isValid)
             assert(subAfter.endTimestamp - subBefore.endTimestamp > 10 - testToleranceSeconds)
-       })
+        })
 
         it("can buy product with ERC20", async () => {
             const subBefore = await market.getSubscription(productId, buyer, { from: buyer })

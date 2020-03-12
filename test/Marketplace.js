@@ -281,7 +281,7 @@ contract("Marketplace2", accounts => {
             await token.approve(market2.address, 1000, { from: accounts[1] })
             const ownerBefore = await token.balanceOf(admin)
             const sellerBefore = await token.balanceOf(accounts[3])
-            await market2.buy(productId1, 1000, { from: accounts[1] })
+            await market2.buy(productId1bytes, 1000, { from: accounts[1] })
 
             /*
             NOTE assertEvent only tests for events in the executed contract, not ancillary contracts.
