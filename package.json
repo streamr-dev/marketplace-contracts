@@ -19,10 +19,7 @@
     "solc": "0.5.16",
     "solhint": "^2.0.0",
     "truffle": "5.1.16",
-    "truffle-flattener": "1.2.5",
+    "truffle-flattener": "1.4.2",
     "web3": "1.2.6"
-  },
-  "dependencies": {
-    "ganache": "^6.4.4"
   }
 }
