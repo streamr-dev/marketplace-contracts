@@ -1,11 +1,17 @@
 module.exports = {
-    // See <http://truffleframework.com/docs/advanced/configuration>
-    // to customize your Truffle configuration!
-    solc: {
-        optimizer: {
-            enabled: true,
-            runs: 200
-        } 
-    }
+	// See <http://truffleframework.com/docs/advanced/configuration>
+	// to customize your Truffle configuration!
+	compilers: {
+		solc: {
+			version: "0.5.16",
+			settings: {
+				optimizer: {
+					enabled: true,
+					runs: 20
+				},
+				evmVersion: "byzantium" 
+			}
+		}
+	}
 
 }
