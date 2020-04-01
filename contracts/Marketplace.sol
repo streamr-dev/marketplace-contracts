@@ -239,7 +239,7 @@ contract Marketplace is Ownable, IMarketplace2 {
         emit ProductRedeployed(p.owner, productId, p.name, p.beneficiary, p.pricePerSecond, p.priceCurrency, p.minimumSubscriptionSeconds);
     }
 
-    function updateProduct(bytes32 productId, string memory name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds) public onlyProductOwner(productId) {
+    function updateProduct(bytes32 productId, string memory name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, bool redeploy) public onlyProductOwner(productId) {
         require(pricePerSecond > 0, "error_freeProductsNotSupported");
         _importProductIfNeeded(productId);
         Product storage p = products[productId];
@@ -249,6 +249,8 @@ contract Marketplace is Ownable, IMarketplace2 {
         p.priceCurrency = currency;
         p.minimumSubscriptionSeconds = minimumSubscriptionSeconds;
         emit ProductUpdated(p.owner, p.id, name, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds);
+        if(redeploy)
+            redeployProduct(productId);
     }
 
     /**
