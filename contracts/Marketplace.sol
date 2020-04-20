@@ -159,11 +159,9 @@ contract Marketplace is Ownable, IMarketplace2 {
      */
     function _importProductIfNeeded(bytes32 productId) internal returns (bool imported){
         Product storage p = products[productId];
-        if(p.id != 0x0)
-            return false;
+        if (p.id != 0x0) { return false; }
         (string memory _name, address _owner, address _beneficiary, uint _pricePerSecond, IMarketplace1.Currency _priceCurrency, uint _minimumSubscriptionSeconds, IMarketplace1.ProductState _state) = prev_marketplace.getProduct(productId);
-        if(_owner == address(0))
-            return false;
+        if (_owner == address(0)) { return false; }
         p.id = productId;
         p.name = _name;
         p.owner = _owner;
@@ -187,7 +185,7 @@ contract Marketplace is Ownable, IMarketplace2 {
         // only call prev_marketplace.getSubscription() if product exists there
         // consider e.g. product created in current marketplace but subscription still doesn't exist
         // if _productImported, it must have existed in previous marketplace so no need to perform check
-        if(!_productImported){
+        if (!_productImported) {
             (,address _owner_prev,,,,,) = prev_marketplace.getProduct(productId);
             if (_owner_prev == address(0)) { return false; }
         }
@@ -239,7 +237,7 @@ contract Marketplace is Ownable, IMarketplace2 {
         emit ProductRedeployed(p.owner, productId, p.name, p.beneficiary, p.pricePerSecond, p.priceCurrency, p.minimumSubscriptionSeconds);
     }
 
-    function updateProduct(bytes32 productId, string memory name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds) public onlyProductOwner(productId) {
+    function updateProduct(bytes32 productId, string memory name, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, bool redeploy) public onlyProductOwner(productId) {
         require(pricePerSecond > 0, "error_freeProductsNotSupported");
         _importProductIfNeeded(productId);
         Product storage p = products[productId];
@@ -249,6 +247,9 @@ contract Marketplace is Ownable, IMarketplace2 {
         p.priceCurrency = currency;
         p.minimumSubscriptionSeconds = minimumSubscriptionSeconds;
         emit ProductUpdated(p.owner, p.id, name, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds);
+        if (redeploy) {
+            redeployProduct(productId);
+        }
     }
 
     /**
@@ -281,10 +282,11 @@ contract Marketplace is Ownable, IMarketplace2 {
         Product storage p = products[productId];
         require(p.id != 0x0, "error_notFound");
         p.requiresWhitelist = _requiresWhitelist;
-        if(_requiresWhitelist)
+        if (_requiresWhitelist) {
             emit WhitelistEnabled(productId);
-        else
+        } else {
             emit WhitelistDisabled(productId);
+        }
     }
 
     function whitelistApprove(bytes32 productId, address subscriber) public onlyProductOwner(productId) {
@@ -318,7 +320,7 @@ contract Marketplace is Ownable, IMarketplace2 {
     function getWhitelistState(bytes32 productId, address subscriber) public view returns (WhitelistState wlstate) {
         (, address _owner,,,,,,) = getProduct(productId);
         require(_owner != address(0), "error_notFound");
-        //if it's not local this will return 0, which is WhitelistState.None
+        // if product is not local (maybe in old marketplace) this will return 0 (WhitelistState.None)
         Product storage p = products[productId];
         return p.whitelist[subscriber];
     }

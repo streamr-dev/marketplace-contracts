@@ -68,10 +68,10 @@ contract("Marketplace2", accounts => {
 
         it("can only be deleted/modified by owner", async () => {
             await assertFails(market2.deleteProduct(id1bytes, { from: accounts[1] }))
-            await assertFails(market2.updateProduct(id1bytes, "lol", accounts[3], 2, Currency.USD, 2, { from: accounts[1] }))
+            await assertFails(market2.updateProduct(id1bytes, "lol", accounts[3], 2, Currency.USD, 2, false, { from: accounts[1] }))
             await assertFails(market2.offerProductOwnership(id1bytes, accounts[1], { from: accounts[1] }))
             await assertFails(market2.deleteProduct(id2bytes, { from: accounts[1] }))
-            await assertFails(market2.updateProduct(id2bytes, "lol", accounts[3], 2, Currency.USD, 2, { from: accounts[1] }))
+            await assertFails(market2.updateProduct(id2bytes, "lol", accounts[3], 2, Currency.USD, 2, false, { from: accounts[1] }))
             await assertFails(market2.offerProductOwnership(id2bytes, accounts[1], { from: accounts[1] }))
         })
 
@@ -97,7 +97,7 @@ contract("Marketplace2", accounts => {
         })
 
         it("allows product be updated", async () => {
-            const res = await market2.updateProduct(id1bytes, "lol", accounts[3], 2, Currency.USD, 2, { from: accounts[0] })
+            const res = await market2.updateProduct(id1bytes, "lol", accounts[3], 2, Currency.USD, 2, false, { from: accounts[0] })
             assertEvent(res, "ProductUpdated", {
                 owner: accounts[0],
                 id: id1,
@@ -107,7 +107,7 @@ contract("Marketplace2", accounts => {
                 minimumSubscriptionSeconds: 2,
             })
             assertReturnValueEqual(await market2.getProduct(id1bytes), ["lol", accounts[0], accounts[3], 2, Currency.USD, 2, ProductState.Deployed, false])
-            const res2 = await market2.updateProduct(id2bytes, "lol", accounts[3], 2, Currency.USD, 2, { from: accounts[0] })
+            const res2 = await market2.updateProduct(id2bytes, "lol", accounts[3], 2, Currency.USD, 2, false, { from: accounts[0] })
             assertEvent(res2, "ProductUpdated", {
                 owner: accounts[0],
                 id: id2,
@@ -397,10 +397,10 @@ contract("Marketplace2", accounts => {
 
         it("activates a PurchaseListener", async () => {
             const listener = await MockCommunity.new(market2.address, { from: admin })
-            await market2.updateProduct(productId1bytes, "test", listener.address, 1, Currency.DATA, 1, { from: accounts[0] })
+            await market2.updateProduct(productId1bytes, "test", listener.address, 1, Currency.DATA, 1, false, { from: accounts[0] })
             const res = await market2.buy(productId1bytes, 100, { from: accounts[1] })
             assertEventBySignature(res, "PurchaseRegistered()")
-            await market2.updateProduct(productId2bytes, "test", listener.address, 1, Currency.DATA, 1, { from: accounts[0] })
+            await market2.updateProduct(productId2bytes, "test", listener.address, 1, Currency.DATA, 1, false, { from: accounts[0] })
             const res2 = await market2.buy(productId2bytes, 100, { from: accounts[1] })
             assertEventBySignature(res2, "PurchaseRegistered()")
 
@@ -413,7 +413,7 @@ contract("Marketplace2", accounts => {
         it("can pay to non-PurchaseListener contracts", async () => {
             const seller = await Marketplace.new(token.address, currencyUpdateAgent, { from: admin })
             const balanceBefore = await token.balanceOf(seller.address, {from: accounts[0]})
-            await market2.updateProduct(productId1bytes, "test", seller.address, 1, Currency.DATA, 1, { from: accounts[0] })
+            await market2.updateProduct(productId1bytes, "test", seller.address, 1, Currency.DATA, 1, false, { from: accounts[0] })
             await market2.buy(productId1bytes, 100, { from: accounts[1] })
             const balanceAfter = await token.balanceOf(seller.address, {from: accounts[0]})
             assert.strictEqual(+balanceBefore, 0)
@@ -423,7 +423,7 @@ contract("Marketplace2", accounts => {
         it("can pay to non-contract addresses", async () => {
             const sellerAddress = "0x1234567890123456789012345678901234567890"
             const balanceBefore = await token.balanceOf(sellerAddress, {from: accounts[0]})
-            await market2.updateProduct(productId1bytes, "test", sellerAddress, 1, Currency.DATA, 1, { from: accounts[0] })
+            await market2.updateProduct(productId1bytes, "test", sellerAddress, 1, Currency.DATA, 1, false, { from: accounts[0] })
             await market2.buy(productId1bytes, 100, { from: accounts[1] })
             const balanceAfter = await token.balanceOf(sellerAddress, {from: accounts[0]})
             assert.strictEqual(+balanceBefore, 0)
@@ -593,8 +593,8 @@ contract("Marketplace2", accounts => {
                 await market2.deleteProduct(_productId, { from: admin })
                 await assertFails(market2.redeployProduct(_productId, { from: accounts[5] }))
                 await market2.redeployProduct(_productId, { from: admin })
-                await assertFails(market2.updateProduct(_productId, "lol", accounts[3], 2, Currency.DATA, 2, { from: accounts[1] }))
-                await market2.updateProduct(_productId, "lol", accounts[3], 2, Currency.DATA, 2, { from: admin })
+                await assertFails(market2.updateProduct(_productId, "lol", accounts[3], 2, Currency.DATA, 2, false, { from: accounts[1] }))
+                await market2.updateProduct(_productId, "lol", accounts[3], 2, Currency.DATA, 2, false, { from: admin })
                 await assertFails(market2.offerProductOwnership(_productId, accounts[1], { from: accounts[1] }))
                 await market2.offerProductOwnership(_productId, admin, { from: admin })
             }
