@@ -474,7 +474,7 @@ contract Marketplace is Ownable, IMarketplace2 {
         if (unit == Currency.DATA) {
             return price.mul(subscriptionSeconds);
         }
-        return price.mul(dataPerUsd).div(10**18).mul(subscriptionSeconds);
+        return price.mul(dataPerUsd).mul(subscriptionSeconds).div(10**18);
     }
 
     /////////////// Admin functionality ///////////////
