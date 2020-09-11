@@ -14,7 +14,7 @@
   "devDependencies": {
     "eslint": "^5.14.1",
     "mocha": "^5.2.0",
-    "node-fetch": "^2.2.0",
+    "node-fetch": "^2.6.1",
     "openzeppelin-solidity": "2.5.0",
     "solc": "0.5.16",
     "solhint": "^2.0.0",
