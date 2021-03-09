@@ -437,7 +437,7 @@ contract Marketplace is Ownable, IMarketplace2 {
     }
 
     function _isValid(TimeBasedSubscription storage s) internal view returns (bool) {
-        return s.endTimestamp >= block.timestamp;   // solium-disable-line security/no-block-members
+        return s.endTimestamp >= block.timestamp;  // solhint-disable-line not-rely-on-time
     }
 
     // TODO: transfer allowance to another Marketplace contract
