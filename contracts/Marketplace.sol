@@ -394,7 +394,7 @@ contract Marketplace is Ownable, IMarketplace2 {
         }
 
         uint256 codeSize;
-        assembly { codeSize := extcodesize(recipient) }  // solium-disable-line security/no-inline-assembly
+        assembly { codeSize := extcodesize(recipient) }  // solhint-disable-line no-inline-assembly
         if (codeSize > 0) {
             // solium-disable-next-line security/no-low-level-calls
             (bool success, bytes memory returnData) = recipient.call(
