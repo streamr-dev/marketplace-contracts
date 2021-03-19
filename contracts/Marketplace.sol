@@ -394,9 +394,9 @@ contract Marketplace is Ownable, IMarketplace2 {
         }
 
         uint256 codeSize;
-        assembly { codeSize := extcodesize(recipient) }  // solium-disable-line security/no-inline-assembly
+        assembly { codeSize := extcodesize(recipient) }  // solhint-disable-line no-inline-assembly
         if (codeSize > 0) {
-            // solium-disable-next-line security/no-low-level-calls
+            // solhint-disable-next-line avoid-low-level-calls
             (bool success, bytes memory returnData) = recipient.call(
                 abi.encodeWithSignature("onPurchase(bytes32,address,uint256,uint256,uint256)",
                 productId, subscriber, oldSub.endTimestamp, price, fee)
@@ -437,7 +437,7 @@ contract Marketplace is Ownable, IMarketplace2 {
     }
 
     function _isValid(TimeBasedSubscription storage s) internal view returns (bool) {
-        return s.endTimestamp >= block.timestamp;   // solium-disable-line security/no-block-members
+        return s.endTimestamp >= block.timestamp;  // solhint-disable-line not-rely-on-time
     }
 
     // TODO: transfer allowance to another Marketplace contract
