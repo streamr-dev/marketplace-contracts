@@ -12,7 +12,7 @@
   "author": "",
   "license": "ISC",
   "devDependencies": {
-    "eslint": "^5.14.1",
+    "eslint": "^7.22.0",
     "mocha": "^5.2.0",
     "node-fetch": "^2.2.0",
     "openzeppelin-solidity": "2.5.0",
