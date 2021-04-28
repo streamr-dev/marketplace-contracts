@@ -1,7 +1,6 @@
-let fs = require("fs")
 const Web3 = require("web3")
 const w3 = new Web3(web3.currentProvider)
-const log = require("debug")("Streamr:du:test:DataUnionSidechain")
+//const log = require("debug")("Streamr:du:test:DataUnionSidechain")
 
 const Marketplace_prev = artifacts.require("./Marketplace20180425.sol")
 const Marketplace = artifacts.require("./Marketplace.sol")
@@ -23,11 +22,13 @@ const WETH9 = new w3.eth.Contract(WETH9Json.abi, null, { data: WETH9Json.bytecod
 
 const futureTime = 4449513600
 
+/*
 function absFractionalDifference(ref, val){
     let diff = Math.abs((ref - val) / ref)
     //console.log(`diff ${ref} ${val} = ${diff}`)
     return diff
 }
+*/
 
 async function deployUniswap2(creator) {
     const weth = await WETH9.deploy(({ arguments: [] })).send({ gas: 6000000, from: creator })
@@ -44,6 +45,7 @@ contract("Uniswap2Adapter", accounts => {
     let fromToken
     let dataToken
     let uniswapRouter
+    let uniswap2Adapter
     const creator = accounts[0]
     const currencyUpdateAgent = accounts[1]
     const buyer = accounts[2]
@@ -62,7 +64,7 @@ contract("Uniswap2Adapter", accounts => {
         await fromToken.mint(buyer, w3.utils.toWei("100000000"), { from: creator })
         market_prev = await Marketplace_prev.new(dataToken.address, currencyUpdateAgent, { from: creator })
         market = await Marketplace.new(dataToken.address, currencyUpdateAgent, market_prev.address, { from: creator })
-        uniswapAdaptor = await Uniswap2Adapter.new(market.address, uniswapRouter.options.address, dataToken.address, { from: creator })
+        uniswap2Adapter = await Uniswap2Adapter.new(market.address, uniswapRouter.options.address, dataToken.address, { from: creator })
         await market.createProduct(productId, "testproduct", streamOwner, w3.utils.toWei(".001"), Currency.DATA, 1, { from: streamOwner })
         let dtAmount = w3.utils.toWei("10")
         let ftAmount = w3.utils.toWei("100")
@@ -84,18 +86,18 @@ contract("Uniswap2Adapter", accounts => {
 
         it("too many seconds fails", async () => {
             // will return ~10 data coin, which pays for 10s
-            await assertFails(uniswapAdaptor.buyWithETH(productId, 20, day, { from: buyer, value: w3.utils.toWei(".01") }))
-            await fromToken.approve(uniswapAdaptor.address, 0, { from: buyer })
+            await assertFails(uniswap2Adapter.buyWithETH(productId, 20, day, { from: buyer, value: w3.utils.toWei(".01") }))
+            await fromToken.approve(uniswap2Adapter.address, 0, { from: buyer })
             //=.001 eth which pays for about 1s
             let value = w3.utils.toWei(".01")
-            await fromToken.approve(uniswapAdaptor.address, value, { from: buyer })
-            await assertFails(uniswapAdaptor.buyWithERC20(productId, 9, day, fromToken.address, value, { from: buyer }))
+            await fromToken.approve(uniswap2Adapter.address, value, { from: buyer })
+            await assertFails(uniswap2Adapter.buyWithERC20(productId, 9, day, fromToken.address, value, { from: buyer }))
         })
 
         it("can buy product with ETH", async () => {
             const subBefore = await market.getSubscription(productId, buyer, { from: buyer })
             //.01 eth pays for about 10s
-            await uniswapAdaptor.buyWithETH(productId, 9, day, { from: buyer, value: w3.utils.toWei(".01") })
+            await uniswap2Adapter.buyWithETH(productId, 9, day, { from: buyer, value: w3.utils.toWei(".01") })
             const subAfter = await market.getSubscription(productId, buyer, { from: buyer })
             assert(subAfter.isValid)
             assert(subAfter.endTimestamp - subBefore.endTimestamp > 10 - testToleranceSeconds)
@@ -105,8 +107,8 @@ contract("Uniswap2Adapter", accounts => {
             const subBefore = await market.getSubscription(productId, buyer, { from: buyer })
             //=.01 eth or about 10s
             let value = w3.utils.toWei("0.1")
-            await fromToken.approve(uniswapAdaptor.address, value, { from: buyer })
-            await uniswapAdaptor.buyWithERC20(productId, 9, day, fromToken.address, value, { from: buyer })
+            await fromToken.approve(uniswap2Adapter.address, value, { from: buyer })
+            await uniswap2Adapter.buyWithERC20(productId, 9, day, fromToken.address, value, { from: buyer })
             const subAfter = await market.getSubscription(productId, buyer, { from: buyer })
             assert(subAfter.isValid)
             assert(subAfter.endTimestamp - subBefore.endTimestamp > 10 - testToleranceSeconds)
@@ -117,18 +119,18 @@ contract("Uniswap2Adapter", accounts => {
             let amt = 1000.0
             const address0 = "0x0000000000000000000000000000000000000000"
             
-            let ethToDataIn = (await uniswapAdaptor.getConversionRateInput(dataToken.address, address0, amt, {from: buyer})) / amt
+            let ethToDataIn = (await uniswap2Adapter.getConversionRateInput(dataToken.address, address0, amt, {from: buyer})) / amt
             assert(absFractionalDifference(ethToDataIn, 1) < .1)
-            let ethToFtIn = (await uniswapAdaptor.getConversionRateInput(address0, fromToken.address, amt, {from: buyer})) / amt
+            let ethToFtIn = (await uniswap2Adapter.getConversionRateInput(address0, fromToken.address, amt, {from: buyer})) / amt
             assert(absFractionalDifference(ethToFtIn, 10) < .1)
-            let ftToDataIn = (await uniswapAdaptor.getConversionRateInput(fromToken.address, dataToken.address, amt, {from: buyer})) / amt
+            let ftToDataIn = (await uniswap2Adapter.getConversionRateInput(fromToken.address, dataToken.address, amt, {from: buyer})) / amt
             assert(absFractionalDifference(ftToDataIn, .1) < .1)
 
-            let ethToDataOut = (await uniswapAdaptor.getConversionRateOutput(dataToken.address, address0, amt, {from: buyer})) / amt
+            let ethToDataOut = (await uniswap2Adapter.getConversionRateOutput(dataToken.address, address0, amt, {from: buyer})) / amt
             assert(absFractionalDifference(ethToDataOut, 1) < .1)
-            let ethToFtOut = (await uniswapAdaptor.getConversionRateOutput(address0, fromToken.address, amt, {from: buyer})) / amt
+            let ethToFtOut = (await uniswap2Adapter.getConversionRateOutput(address0, fromToken.address, amt, {from: buyer})) / amt
             assert(absFractionalDifference(ethToFtOut, .1) < .1)
-            let ftToDataOut = (await uniswapAdaptor.getConversionRateOutput(fromToken.address, dataToken.address, amt, {from: buyer})) / amt
+            let ftToDataOut = (await uniswap2Adapter.getConversionRateOutput(fromToken.address, dataToken.address, amt, {from: buyer})) / amt
             assert(absFractionalDifference(ftToDataOut, 10) < .1)
 
         })
