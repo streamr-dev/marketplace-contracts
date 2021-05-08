@@ -1,7 +1,7 @@
 const Marketplace_prev = artifacts.require("./Marketplace20180425.sol")
 const Marketplace = artifacts.require("./Marketplace.sol")
 const BancorAdaptor = artifacts.require("./BancorAdaptor.sol")
-const ERC20Mintable = artifacts.require("zeppelin-solidity/contracts/token/ERC20/ERC20Mintable.sol")
+const ERC20Mintable = artifacts.require("./ERC20Mintable.sol")
 const MockBancorConverter = artifacts.require("./MockBancorConverter.sol")
 const { Marketplace: { Currency } } = require("../src/contracts/enums")
 const Web3 = require("web3")
