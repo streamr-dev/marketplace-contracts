@@ -1,6 +1,7 @@
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.6;
 
-//import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol"; 
+import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol"; 
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 
 contract IMarketplace {
     enum ProductState {
@@ -19,126 +20,18 @@ contract IMarketplace {
     function buyFor(bytes32 productId, uint subscriptionSeconds, address recipient) public {}
 }
 
-interface IERC20Token {
-    function name() external view returns (string memory);
-    function symbol() external view returns (string memory);
-    function decimals() external view returns (uint8);
-    function totalSupply() external view returns (uint256);
-    function balanceOf(address _owner) external view returns (uint256);
-    function allowance(address _owner, address _spender) external view returns (uint256);
-    function transfer(address _to, uint256 _value) external returns (bool success);
-    function transferFrom(address _from, address _to, uint256 _value) external returns (bool success);
-    function approve(address _spender, uint256 _value) external returns (bool success);
-}
-
-
-interface IUniswapV2Router01 {
-    function factory() external pure returns (address);
-    function WETH() external pure returns (address);
-
-    function addLiquidity(
-        address tokenA,
-        address tokenB,
-        uint amountADesired,
-        uint amountBDesired,
-        uint amountAMin,
-        uint amountBMin,
-        address to,
-        uint deadline
-    ) external returns (uint amountA, uint amountB, uint liquidity);
-    function addLiquidityETH(
-        address token,
-        uint amountTokenDesired,
-        uint amountTokenMin,
-        uint amountETHMin,
-        address to,
-        uint deadline
-    ) external payable returns (uint amountToken, uint amountETH, uint liquidity);
-    function removeLiquidity(
-        address tokenA,
-        address tokenB,
-        uint liquidity,
-        uint amountAMin,
-        uint amountBMin,
-        address to,
-        uint deadline
-    ) external returns (uint amountA, uint amountB);
-    function removeLiquidityETH(
-        address token,
-        uint liquidity,
-        uint amountTokenMin,
-        uint amountETHMin,
-        address to,
-        uint deadline
-    ) external returns (uint amountToken, uint amountETH);
-    function removeLiquidityWithPermit(
-        address tokenA,
-        address tokenB,
-        uint liquidity,
-        uint amountAMin,
-        uint amountBMin,
-        address to,
-        uint deadline,
-        bool approveMax, uint8 v, bytes32 r, bytes32 s
-    ) external returns (uint amountA, uint amountB);
-    function removeLiquidityETHWithPermit(
-        address token,
-        uint liquidity,
-        uint amountTokenMin,
-        uint amountETHMin,
-        address to,
-        uint deadline,
-        bool approveMax, uint8 v, bytes32 r, bytes32 s
-    ) external returns (uint amountToken, uint amountETH);
-    function swapExactTokensForTokens(
-        uint amountIn,
-        uint amountOutMin,
-        address[] calldata path,
-        address to,
-        uint deadline
-    ) external returns (uint[] memory amounts);
-    function swapTokensForExactTokens(
-        uint amountOut,
-        uint amountInMax,
-        address[] calldata path,
-        address to,
-        uint deadline
-    ) external returns (uint[] memory amounts);
-    function swapExactETHForTokens(uint amountOutMin, address[] calldata path, address to, uint deadline)
-        external
-        payable
-        returns (uint[] memory amounts);
-    function swapTokensForExactETH(uint amountOut, uint amountInMax, address[] calldata path, address to, uint deadline)
-        external
-        returns (uint[] memory amounts);
-    function swapExactTokensForETH(uint amountIn, uint amountOutMin, address[] calldata path, address to, uint deadline)
-        external
-        returns (uint[] memory amounts);
-    function swapETHForExactTokens(uint amountOut, address[] calldata path, address to, uint deadline)
-        external
-        payable
-        returns (uint[] memory amounts);
-
-    function quote(uint amountA, uint reserveA, uint reserveB) external pure returns (uint amountB);
-    function getAmountOut(uint amountIn, uint reserveIn, uint reserveOut) external pure returns (uint amountOut);
-    function getAmountIn(uint amountOut, uint reserveIn, uint reserveOut) external pure returns (uint amountIn);
-    function getAmountsOut(uint amountIn, address[] calldata path) external view returns (uint[] memory amounts);
-    function getAmountsIn(uint amountOut, address[] calldata path) external view returns (uint[] memory amounts);
-
-}
-
 contract Uniswap2Adapter {
 //    using SafeMath for uint256;
 
     IMarketplace public marketplace;
     IUniswapV2Router01 public uniswapRouter;
-    IERC20Token public datacoin;
+    IERC20 public datacoin;
     address public liquidityToken;
 
     constructor(address _marketplace, address _uniswapRouter, address _datacoin) public {
         marketplace = IMarketplace(_marketplace);
         uniswapRouter = IUniswapV2Router01(_uniswapRouter);
-        datacoin = IERC20Token(_datacoin);
+        datacoin = IERC20(_datacoin);
     }
     function mul(uint256 a, uint256 b) internal pure returns (uint256) {
         // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
@@ -220,7 +113,7 @@ contract Uniswap2Adapter {
             marketplace.buyFor(productId,minSubscriptionSeconds,msg.sender);
             return;
         }
-        IERC20Token fromToken = IERC20Token(erc20_address);
+        IERC20 fromToken = IERC20(erc20_address);
         require(fromToken.transferFrom(msg.sender, address(this), amount), "must pre approve token transfer");
         // use the exchange of the received token. this exchange will query its factory to find
         // the DATAcoin exchange in tokenToTokenTransferInput() in _buyWithUniswap()
