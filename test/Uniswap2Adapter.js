@@ -5,7 +5,7 @@ const w3 = new Web3(web3.currentProvider)
 const Marketplace_prev = artifacts.require("./Marketplace20180425.sol")
 const Marketplace = artifacts.require("./Marketplace.sol")
 const Uniswap2Adapter = artifacts.require("./Uniswap2Adapter.sol")
-const ERC20Mintable = artifacts.require("zeppelin-solidity/contracts/token/ERC20/ERC20Mintable.sol")
+const ERC20Mintable = artifacts.require("./ERC20Mintable.sol")
 //const MockUniswapFactory = artifacts.require("./MockUniswapFactory.sol")
 //const MockUniswapExchange = artifacts.require("./MockUniswapExchange.sol")
 const { Marketplace: { Currency } } = require("../src/contracts/enums")
@@ -113,29 +113,5 @@ contract("Uniswap2Adapter", accounts => {
             assert(subAfter.isValid)
             assert(subAfter.endTimestamp - subBefore.endTimestamp > 10 - testToleranceSeconds)
         })
-
-        /*
-        it("test exchange rates", async () => {
-            let amt = 1000.0
-            const address0 = "0x0000000000000000000000000000000000000000"
-            
-            let ethToDataIn = (await uniswap2Adapter.getConversionRateInput(dataToken.address, address0, amt, {from: buyer})) / amt
-            assert(absFractionalDifference(ethToDataIn, 1) < .1)
-            let ethToFtIn = (await uniswap2Adapter.getConversionRateInput(address0, fromToken.address, amt, {from: buyer})) / amt
-            assert(absFractionalDifference(ethToFtIn, 10) < .1)
-            let ftToDataIn = (await uniswap2Adapter.getConversionRateInput(fromToken.address, dataToken.address, amt, {from: buyer})) / amt
-            assert(absFractionalDifference(ftToDataIn, .1) < .1)
-
-            let ethToDataOut = (await uniswap2Adapter.getConversionRateOutput(dataToken.address, address0, amt, {from: buyer})) / amt
-            assert(absFractionalDifference(ethToDataOut, 1) < .1)
-            let ethToFtOut = (await uniswap2Adapter.getConversionRateOutput(address0, fromToken.address, amt, {from: buyer})) / amt
-            assert(absFractionalDifference(ethToFtOut, .1) < .1)
-            let ftToDataOut = (await uniswap2Adapter.getConversionRateOutput(fromToken.address, dataToken.address, amt, {from: buyer})) / amt
-            assert(absFractionalDifference(ftToDataOut, 10) < .1)
-
-        })
-        */
-
-
     })
 })

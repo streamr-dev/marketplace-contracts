@@ -2,6 +2,7 @@ pragma solidity ^0.6.6;
 
 import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router02.sol"; 
 import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
+import "openzeppelin-solidity/contracts/math/SafeMath.sol";
 
 contract IMarketplace {
     enum ProductState {
@@ -21,7 +22,7 @@ contract IMarketplace {
 }
 
 contract Uniswap2Adapter {
-//    using SafeMath for uint256;
+    using SafeMath for uint256;
 
     IMarketplace public marketplace;
     IUniswapV2Router01 public uniswapRouter;
@@ -33,72 +34,6 @@ contract Uniswap2Adapter {
         uniswapRouter = IUniswapV2Router01(_uniswapRouter);
         datacoin = IERC20(_datacoin);
     }
-    function mul(uint256 a, uint256 b) internal pure returns (uint256) {
-        // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
-        // benefit is lost if 'b' is also tested.
-        // See: https://github.com/OpenZeppelin/openzeppelin-solidity/pull/522
-        if (a == 0) {
-            return 0;
-        }
-
-        uint256 c = a * b;
-        require(c / a == b);
-
-        return c;
-    }
-    /*
-        token address 0x0 means ETH
-    */
-    /*
-    //returns the amount to_tokens that would be received from an input_amount of from_tokens
-    function getConversionRateInput(address from_token, address to_token, uint input_amount) public view returns (uint){
-        require(from_token != to_token, "must specify different tokens ");
-        uint eth_amount;
-        if(from_token == address(0)){
-            eth_amount = input_amount;
-        }
-        else{
-            address from_token_exchange = uniswap_router.getExchange(from_token);
-            require(from_token_exchange != address(0), "couldnt find exchange for from_token");
-            IUniswapExchange exfrom = IUniswapExchange(from_token_exchange);
-            eth_amount = exfrom.getTokenToEthInputPrice(input_amount);
-        }
-        if(to_token == address(0)){
-            return eth_amount;
-        }
-        else{
-            address to_token_exchange = uniswap_router.getExchange(to_token);
-            require(to_token_exchange != address(0), "couldnt find exchange for to_token");
-            IUniswapExchange exto = IUniswapExchange(to_token_exchange);
-            return exto.getEthToTokenInputPrice(eth_amount);
-        }
-    }
-
-    // returns the amount from_tokens needed to buy output_amount of to_tokens
-    function getConversionRateOutput(address from_token, address to_token, uint output_amount) public view returns (uint){
-        require(from_token != to_token, "must specify different tokens ");
-        uint eth_amount;
-        if(to_token == address(0)){
-            eth_amount = output_amount;
-        }
-        else{
-            address to_token_exchange = uniswap_router.getExchange(to_token);
-            require(to_token_exchange != address(0), "couldnt find exchange for to_token");
-            IUniswapExchange exto = IUniswapExchange(to_token_exchange);
-            eth_amount = exto.getEthToTokenOutputPrice(output_amount);
-        }
-        if(from_token == address(0)){
-            return eth_amount;
-        }
-        else{
-            address from_token_exchange = uniswap_router.getExchange(from_token);
-            require(from_token_exchange != address(0), "couldnt find exchange for from_token");
-            IUniswapExchange exfrom = IUniswapExchange(from_token_exchange);
-            return exfrom.getTokenToEthOutputPrice(eth_amount);
-        }
-    }
-    */
-    
 
     function _getPricePerSecondData(bytes32 productId) internal view returns (uint) {
         (, address owner,, uint pricePerSecond, IMarketplace.Currency priceCurrency,,) = marketplace.getProduct(productId);
@@ -138,21 +73,25 @@ contract Uniswap2Adapter {
         from_token = uniswapRouter.WETH() means ETH
      */
     function _buyWithUniswap(bytes32 productId, uint minSubscriptionSeconds, uint timeWindow, uint pricePerSecondData, uint amount, address from_token) internal{
-        uint price = mul(pricePerSecondData,minSubscriptionSeconds);
+        if(from_token == address(datacoin)) {
+            marketplace.buyFor(productId, amount.div(pricePerSecondData), msg.sender);
+            return;
+        }
+        uint price = pricePerSecondData.mul(minSubscriptionSeconds);
         uint256 datacoin_before_transfer = datacoin.balanceOf(address(this));
         // TransferInput should revert if it cant get at least 'price' amount of DATAcoin 
         uint256 received_datacoin;
         address[] memory path = _uniswapPath(from_token);
-        if(from_token == address(uniswapRouter.WETH())){
+        if(from_token == address(uniswapRouter.WETH())) {
             received_datacoin = uniswapRouter.swapExactETHForTokens.value(amount)(1, path, address(this), now + timeWindow)[path.length - 1];
         }
-        else{
+        else {
             received_datacoin = uniswapRouter.swapExactTokensForTokens(amount, 1, path, address(this), now + timeWindow)[path.length - 1];
         }
-        require(datacoin.balanceOf(address(this)) - datacoin_before_transfer >= received_datacoin && received_datacoin >= price, "not enough datacoin received");
+        require(datacoin.balanceOf(address(this)).sub(datacoin_before_transfer) >= received_datacoin && received_datacoin >= price, "not enough datacoin received");
         require(datacoin.approve(address(marketplace),0), "approval failed");
         require(datacoin.approve(address(marketplace), received_datacoin), "approval failed");
-        marketplace.buyFor(productId, received_datacoin / pricePerSecondData, msg.sender);
+        marketplace.buyFor(productId, received_datacoin.div(pricePerSecondData), msg.sender);
     }
 
     function _uniswapPath(address fromCoin) internal view returns (address[] memory) {
