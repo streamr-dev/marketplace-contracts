@@ -1,4 +1,6 @@
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.6;
+
+import "openzeppelin-solidity/contracts/token/ERC20/IERC20.sol";
 
 contract IMarketplace {
     enum ProductState {
@@ -17,25 +19,14 @@ contract IMarketplace {
     function buyFor(bytes32 productId, uint subscriptionSeconds, address recipient) public {}
 }
 
-interface IERC20Token {
-    function name() external view returns (string memory);
-    function symbol() external view returns (string memory);
-    function decimals() external view returns (uint8);
-    function totalSupply() external view returns (uint256);
-    function balanceOf(address _owner) external view returns (uint256);
-    function allowance(address _owner, address _spender) external view returns (uint256);
-    function transfer(address _to, uint256 _value) external returns (bool success);
-    function transferFrom(address _from, address _to, uint256 _value) external returns (bool success);
-    function approve(address _spender, uint256 _value) external returns (bool success);
-}
-
 
 
 //from https://docs.uniswap.io/smart-contract-integration/interface:
-contract IUniswapFactory {
+interface IUniswapFactory {
     // Public Variables
-    address public exchangeTemplate;
-    uint256 public tokenCount;
+    function exchangeTemplate() external returns (address) ;
+    function tokenCount() external returns (uint256) ;
+
     // Create Exchange
     function createExchange(address token) external returns (address exchange);
     // Get Exchange and Token Info
@@ -45,7 +36,7 @@ contract IUniswapFactory {
     // Never use
     function initializeFactory(address template) external;
 }
-contract IUniswapExchange{
+interface IUniswapExchange{
     // Address of ERC20 token sold on this exchange
     function tokenAddress() external view returns (address token);
     // Address of Uniswap Factory
@@ -79,9 +70,12 @@ contract IUniswapExchange{
     function tokenToExchangeSwapOutput(uint256 tokens_bought, uint256 max_tokens_sold, uint256 max_eth_sold, uint256 deadline, address exchange_addr) external returns (uint256  tokens_sold);
     function tokenToExchangeTransferOutput(uint256 tokens_bought, uint256 max_tokens_sold, uint256 max_eth_sold, uint256 deadline, address recipient, address exchange_addr) external returns (uint256  tokens_sold);
     // ERC20 comaptibility for liquidity tokens
-    bytes32 public name;
-    bytes32 public symbol;
-    uint256 public decimals;
+    function name() external view returns (bytes32);
+    function symbol() external view returns (bytes32);
+    function decimals() external view returns (uint256);
+
+    
+
     function transfer(address _to, uint256 _value) external returns (bool);
     function transferFrom(address _from, address _to, uint256 value) external returns (bool);
     function approve(address _spender, uint256 _value) external returns (bool);
@@ -96,11 +90,11 @@ contract UniswapAdaptor {
 
     IMarketplace marketplace;
     IUniswapFactory uniswap_factory;
-    IERC20Token datacoin;
+    IERC20 datacoin;
     constructor(address _marketplace_address, address _uniswap_factory_address, address _datacoin_address) public {
         marketplace = IMarketplace(_marketplace_address);
         uniswap_factory = IUniswapFactory(_uniswap_factory_address);
-        datacoin = IERC20Token(_datacoin_address);
+        datacoin = IERC20(_datacoin_address);
     }
     function mul(uint256 a, uint256 b) internal pure returns (uint256) {
         // Gas optimization: this is cheaper than requiring 'a' not being zero, but the
@@ -181,7 +175,7 @@ contract UniswapAdaptor {
             marketplace.buyFor(productId,minSubscriptionSeconds,msg.sender);
             return;
         }
-        IERC20Token fromToken = IERC20Token(erc20_address);
+        IERC20 fromToken = IERC20(erc20_address);
         require(fromToken.transferFrom(msg.sender,address(this),amount), "must pre approve token transfer");
         // use the exchange of the received token. this exchange will query its factory to find
         // the DATAcoin exchange in tokenToTokenTransferInput() in _buyWithUniswap()

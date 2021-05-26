@@ -3,7 +3,7 @@ const w3 = new Web3(web3.currentProvider)
 const Marketplace = artifacts.require("./Marketplace20180425.sol")
 const Marketplace2 = artifacts.require("./Marketplace.sol")
 const MockCommunity = artifacts.require("./MockCommunity.sol")
-const ERC20Mintable = artifacts.require("zeppelin-solidity/contracts/token/ERC20/ERC20Mintable.sol")
+const ERC20Mintable = artifacts.require("./ERC20Mintable.sol")
 
 const { Marketplace: { ProductState, Currency } } = require("../src/contracts/enums")
 

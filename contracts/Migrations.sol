@@ -1,5 +1,5 @@
 // solhint-disable compiler-fixed, var-name-mixedcase
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.6;
 
 contract Migrations {
     address public owner;

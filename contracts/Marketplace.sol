@@ -1,5 +1,5 @@
 // solhint-disable not-rely-on-time
-pragma solidity ^0.5.16;
+pragma solidity ^0.6.6;
 
 import "openzeppelin-solidity/contracts/token/ERC20/ERC20.sol";
 import "openzeppelin-solidity/contracts/math/SafeMath.sol";
@@ -8,7 +8,7 @@ import "./PurchaseListener.sol";
 import "./Ownable.sol";
 
 
-contract IMarketplace {
+interface IMarketplace {
     enum ProductState {
         NotDeployed,                // non-existent or deleted
         Deployed                    // created or redeployed
@@ -25,15 +25,15 @@ contract IMarketplace {
         Approved,
         Rejected
     }
-    function getSubscription(bytes32 productId, address subscriber) public view returns (bool isValid, uint endTimestamp) {}
-    function getPriceInData(uint subscriptionSeconds, uint price, Currency unit) public view returns (uint datacoinAmount) {}
+    function getSubscription(bytes32 productId, address subscriber) external view returns (bool isValid, uint endTimestamp);
+    function getPriceInData(uint subscriptionSeconds, uint price, Currency unit) external view returns (uint datacoinAmount);
 }
-contract IMarketplace1 is IMarketplace{
-    function getProduct(bytes32 id) public view returns (string memory name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state) {}
+interface IMarketplace1 is IMarketplace{
+    function getProduct(bytes32 id) external view returns (string memory name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state);
 }
-contract IMarketplace2 is IMarketplace{
-    function getProduct(bytes32 id) public view returns (string memory name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state, bool requiresWhitelist) {}
-    function buyFor(bytes32 productId, uint subscriptionSeconds, address recipient) public {}
+interface IMarketplace2 is IMarketplace{
+    function getProduct(bytes32 id) external view returns (string memory name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state, bool requiresWhitelist);
+    function buyFor(bytes32 productId, uint subscriptionSeconds, address recipient) external;
 }
 /**
  * @title Streamr Marketplace
@@ -120,7 +120,7 @@ contract Marketplace is Ownable, IMarketplace2 {
     /*
         checks this marketplace first, then the previous
     */
-    function getProduct(bytes32 id) public view returns (string memory name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state, bool requiresWhitelist) {
+    function getProduct(bytes32 id) public override view returns (string memory name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state, bool requiresWhitelist) {
         (name, owner, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, state, requiresWhitelist) = _getProductLocal(id);
         if (owner != address(0))
             return (name, owner, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, state, requiresWhitelist);
@@ -327,7 +327,7 @@ contract Marketplace is Ownable, IMarketplace2 {
 
     /////////////// Subscription management ///////////////
 
-    function getSubscription(bytes32 productId, address subscriber) public view returns (bool isValid, uint endTimestamp) {
+    function getSubscription(bytes32 productId, address subscriber) public override view returns (bool isValid, uint endTimestamp) {
         (,address _owner,,,,,,) = _getProductLocal(productId);
         if (_owner == address(0)) {
             return prev_marketplace.getSubscription(productId,subscriber);
@@ -414,7 +414,7 @@ contract Marketplace is Ownable, IMarketplace2 {
     }
 
 
-    function buyFor(bytes32 productId, uint subscriptionSeconds, address recipient) public whenNotHalted {
+    function buyFor(bytes32 productId, uint subscriptionSeconds, address recipient) public override whenNotHalted {
         return _subscribe(productId, subscriptionSeconds, recipient, true);
     }
 
@@ -470,7 +470,7 @@ contract Marketplace is Ownable, IMarketplace2 {
     * @param price nominal price scaled by 10^18 ("token wei" or "attodollars")
     * @param unit unit of the number price
     */
-    function getPriceInData(uint subscriptionSeconds, uint price, Currency unit) public view returns (uint datacoinAmount) {
+    function getPriceInData(uint subscriptionSeconds, uint price, Currency unit) public override view returns (uint datacoinAmount) {
         if (unit == Currency.DATA) {
             return price.mul(subscriptionSeconds);
         }
