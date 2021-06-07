@@ -10,7 +10,7 @@ updates:
       time: '08:00'
       timezone: Europe/Helsinki
     commit-message:
-      prefix: "build"
+      prefix: "ci"
       include: "scope"
     labels:
       - actions
