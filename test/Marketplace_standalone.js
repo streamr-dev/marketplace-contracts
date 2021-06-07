@@ -1,5 +1,3 @@
-/* global web3 */
-
 // using the NEW web3 1.0
 const Web3 = require("web3")
 
