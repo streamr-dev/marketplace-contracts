@@ -15,7 +15,7 @@
     "eslint": "^7.28.0",
     "mocha": "^9.0.0",
     "node-fetch": "^2.6.1",
-    "openzeppelin-solidity": "3.3.0",
+    "openzeppelin-solidity": "4.1.0",
     "solhint": "^2.0.0",
     "truffle": "5.3.5",
     "truffle-flattener": "1.5.0",
