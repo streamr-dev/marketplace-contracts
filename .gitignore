@@ -7,3 +7,11 @@ node_modules
 .idea/dictionaries
 .idea/httpRequests
 coverage
+
+.env
+coverage.json
+typechain
+
+#Hardhat files
+cache
+artifacts
