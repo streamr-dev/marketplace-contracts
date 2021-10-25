@@ -122,7 +122,7 @@ contract Marketplace is Ownable, IMarketplace2 {
     */
     function getProduct(bytes32 id) public override view returns (string memory name, address owner, address beneficiary, uint pricePerSecond, Currency currency, uint minimumSubscriptionSeconds, ProductState state, bool requiresWhitelist) {
         (name, owner, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, state, requiresWhitelist) = _getProductLocal(id);
-        if (owner != address(0))
+        if (owner != address(0) || address(prev_marketplace) == address(0))
             return (name, owner, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, state, requiresWhitelist);
         (name, owner, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, state) = prev_marketplace.getProduct(id);
         return (name, owner, beneficiary, pricePerSecond, currency, minimumSubscriptionSeconds, state, false);
@@ -158,6 +158,7 @@ contract Marketplace is Ownable, IMarketplace2 {
      * Imports product details (but NOT subscription details) from previous marketplace
      */
     function _importProductIfNeeded(bytes32 productId) internal returns (bool imported){
+        if(address(prev_marketplace) == address(0)) { return false; }
         Product storage p = products[productId];
         if (p.id != 0x0) { return false; }
         (string memory _name, address _owner, address _beneficiary, uint _pricePerSecond, IMarketplace1.Currency _priceCurrency, uint _minimumSubscriptionSeconds, IMarketplace1.ProductState _state) = prev_marketplace.getProduct(productId);
@@ -175,6 +176,7 @@ contract Marketplace is Ownable, IMarketplace2 {
     }
 
     function _importSubscriptionIfNeeded(bytes32 productId, address subscriber) internal returns (bool imported) {
+        if(address(prev_marketplace) == address(0)) { return false; }
         bool _productImported = _importProductIfNeeded(productId);
 
         // check that subscription didn't already exist in current marketplace
@@ -329,12 +331,12 @@ contract Marketplace is Ownable, IMarketplace2 {
 
     function getSubscription(bytes32 productId, address subscriber) public override view returns (bool isValid, uint endTimestamp) {
         (,address _owner,,,,,,) = _getProductLocal(productId);
-        if (_owner == address(0)) {
+        if (_owner == address(0) && address(prev_marketplace) != address(0)) {
             return prev_marketplace.getSubscription(productId,subscriber);
         }
 
         (, TimeBasedSubscription storage sub) = _getSubscriptionLocal(productId, subscriber);
-        if (sub.endTimestamp == 0x0) {
+        if (sub.endTimestamp == 0x0 && address(prev_marketplace) != address(0)) {
             // only call prev_marketplace.getSubscription() if product exists in previous marketplace too
             (,address _owner_prev,,,,,) = prev_marketplace.getProduct(productId);
             if (_owner_prev != address(0)) {

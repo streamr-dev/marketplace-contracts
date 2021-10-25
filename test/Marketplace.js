@@ -11,6 +11,7 @@ const { assertReturnValueEqual, assertEvent, assertEqual, assertFails, assertEve
 contract("Marketplace2", accounts => {
     let market
     let market2
+    let market2without1
     let market2using1api
     let token
     const currencyUpdateAgent = accounts[9]
@@ -20,6 +21,7 @@ contract("Marketplace2", accounts => {
         await Promise.all(accounts.map(acco => token.mint(acco, 1000000)))
         market = await Marketplace.new(token.address, currencyUpdateAgent, { from: admin })
         market2 = await Marketplace2.new(token.address, currencyUpdateAgent, market.address, { from: admin })
+        market2without1 = await Marketplace2.new(token.address, currencyUpdateAgent, "0x0000000000000000000000000000000000000000", { from: admin })
         market2using1api = await Marketplace.at(market2.address)
     })
 
@@ -32,6 +34,9 @@ contract("Marketplace2", accounts => {
         //product created in market2
         let id2 = "test2"
         let id2bytes = web3.utils.padLeft(web3.utils.asciiToHex(id2), 64)
+        //product created in market2 not connected to 1
+        let id3 = "test3"
+        let id3bytes = web3.utils.padLeft(web3.utils.asciiToHex(id3), 64)
         it("creates a product with correct params", async () => {
             const res = await market.createProduct(id1bytes, id1, accounts[0], 1, Currency.DATA, 1, { from: accounts[0] })
             assertEvent(res, "ProductCreated", {
@@ -56,6 +61,18 @@ contract("Marketplace2", accounts => {
                 minimumSubscriptionSeconds: 1,
             })
             assertReturnValueEqual(await market2.getProduct(id2bytes), [id2, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed, false])
+
+            const res3 = await market2without1.createProduct(id3bytes, id3, accounts[0], 1, Currency.DATA, 1, { from: accounts[0] })
+            assertEvent(res3, "ProductCreated", {
+                owner: accounts[0],
+                id: id3,
+                name: id3,
+                beneficiary: accounts[0],
+                pricePerSecond: 1,
+                currency: Currency.DATA,
+                minimumSubscriptionSeconds: 1,
+            })
+            assertReturnValueEqual(await market2without1.getProduct(id3bytes), [id3, accounts[0], accounts[0], 1, Currency.DATA, 1, ProductState.Deployed, false])
         })
 
         it("Marketplace2.getProduct() works using Marketplace1 ABI", async () => {
@@ -248,18 +265,23 @@ contract("Marketplace2", accounts => {
     describe("Buying products", () => {
         let productId1
         let productId2
+        let productId3
         let productId1bytes
         let productId2bytes
+        let productId3bytes
         let testIndex = 0
         beforeEach(async () => {
             productId1 = `test_buy1_${testIndex}`
             productId2 = `test_buy2_${testIndex}`
+            productId3 = `test_buy3_${testIndex}`
             productId1bytes = web3.utils.padLeft(web3.utils.asciiToHex(productId1), 64)
             productId2bytes = web3.utils.padLeft(web3.utils.asciiToHex(productId2), 64)
+            productId3bytes = web3.utils.padLeft(web3.utils.asciiToHex(productId3), 64)
 
             testIndex += 1
             await market.createProduct(productId1bytes, productId1, accounts[3], 1, Currency.DATA, 1, { from: accounts[0] })
             await market2.createProduct(productId2bytes, productId2, accounts[3], 1, Currency.DATA, 1, { from: accounts[0] })
+            await market2without1.createProduct(productId3bytes, productId3, accounts[3], 1, Currency.DATA, 1, { from: accounts[0] })
 
         })
 
@@ -392,6 +414,18 @@ contract("Marketplace2", accounts => {
                 subscriber: accounts[1],
             })
             assert(await market2.hasValidSubscription(productId2bytes, accounts[1]), { from: accounts[0] })
+
+        })
+
+        it("works in market2 not connected to 1", async () => {
+            await token.approve(market2without1.address, 100, { from: accounts[1] })
+
+            const res = await market2without1.buy(productId3bytes, 100, { from: accounts[1] })
+            assertEvent(res, "NewSubscription", {
+                //                productId,
+                subscriber: accounts[1],
+            })
+            assert(await market2without1.hasValidSubscription(productId3bytes, accounts[1]), { from: accounts[0] })
 
         })
 
