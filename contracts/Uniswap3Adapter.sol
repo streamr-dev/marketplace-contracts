@@ -1,6 +1,11 @@
 pragma solidity ^0.8.4;
 
 import "@uniswap/v3-periphery/contracts/interfaces/ISwapRouter.sol";
+import "@uniswap/v3-periphery/contracts/interfaces/IPeripheryImmutableState.sol";
+
+interface WETH {
+    function deposit() external payable;
+}
 
 interface IERC20 {
     function totalSupply() external view returns (uint256);
@@ -167,13 +172,16 @@ contract Uniswap3Adapter {
             marketplace.buyFor(productId, minSubscriptionSeconds, msg.sender);
             return;
         }
+        address weth =  IPeripheryImmutableState(address(uniswapRouter)).WETH9();
+        WETH(weth).deposit{value: msg.value}();
+        require(IERC20(weth).approve(address(uniswapRouter), msg.value),"approval failed");
         _buyWithUniswap(
             productId,
             minSubscriptionSeconds,
             timeWindow,
             pricePerSecondData,
             msg.value,
-            address(0)
+            weth
         );
     }
 
@@ -235,15 +243,16 @@ contract Uniswap3Adapter {
     {
         if (liquidityToken == address(0)) {
             //no intermediary swap
-            return abi.encodePacked(address(datacoin), poolFee, fromCoin);
+            //return abi.encodePacked(address(datacoin), poolFee, fromCoin);
+            return abi.encodePacked(fromCoin, poolFee, address(datacoin));
         }
         return
             abi.encodePacked(
-                address(datacoin),
+                fromCoin,
                 poolFee,
                 liquidityToken,
                 poolFee,
-                fromCoin
+                address(datacoin)
             );
     }
 }
