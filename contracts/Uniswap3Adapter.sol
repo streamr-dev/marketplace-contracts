@@ -138,8 +138,7 @@ contract Uniswap3Adapter {
             fromToken.transferFrom(msg.sender, address(this), amount),
             "must pre approve token transfer"
         );
-        // use the exchange of the received token. this exchange will query its factory to find
-        // the DATAcoin exchange in tokenToTokenTransferInput() in _buyWithUniswap()
+        //some tokens (eg old DATA) require approve(0) if amount approved is already non-zero
         require(
             fromToken.approve(address(uniswapRouter), 0),
             "approval failed"
