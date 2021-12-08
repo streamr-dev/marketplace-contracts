@@ -17,6 +17,8 @@ updates:
       - dependencies
     reviewers:
       - jtakalai
+    assignees:
+      - DaisyDomergue
 
   - package-ecosystem: npm
     directory: /
