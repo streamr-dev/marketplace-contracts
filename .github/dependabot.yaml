@@ -13,8 +13,7 @@ updates:
       prefix: "ci"
       include: "scope"
     labels:
-      - actions
-      - dependencies
+      - ci
     reviewers:
       - kare
     assignees:
@@ -31,6 +30,5 @@ updates:
       include: "scope"
     labels:
       - build
-      - dependencies
     reviewers:
       - jtakalai
