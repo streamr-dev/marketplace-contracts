@@ -16,7 +16,7 @@ updates:
       - actions
       - dependencies
     reviewers:
-      - jtakalai
+      - kare
     assignees:
       - DaisyDomergue
 
@@ -30,7 +30,7 @@ updates:
       prefix: "build"
       include: "scope"
     labels:
-      - npm
+      - build
       - dependencies
     reviewers:
       - jtakalai
