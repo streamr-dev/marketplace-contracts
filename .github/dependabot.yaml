@@ -13,10 +13,11 @@ updates:
       prefix: "ci"
       include: "scope"
     labels:
-      - actions
-      - dependencies
+      - ci
     reviewers:
-      - jtakalai
+      - kare
+    assignees:
+      - DaisyDomergue
 
   - package-ecosystem: npm
     directory: /
@@ -28,7 +29,6 @@ updates:
       prefix: "build"
       include: "scope"
     labels:
-      - npm
-      - dependencies
+      - build
     reviewers:
       - jtakalai
