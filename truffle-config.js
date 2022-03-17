@@ -26,6 +26,17 @@ module.exports = {
             network_id: 137,
             provider: () => new HDWalletProvider(process.env.POLYGON_PK || "0x5e98cce00cff5dea6b454889f359a4ec06b9fa6b88e9d69b86de8e1c81887da0", "http://polygon-rpc.com"),
             host: "polygon-rpc.com",
-        }
+            confirmations: 2,
+            timeoutBlocks: 200,
+            skipDryRun: true
+        },
+        maticTest: {
+            // provider: () => new HDWalletProvider("0xeaaaad222fd6ddbe5ac1034493937108f17766eaf5c8663335b73840ee864b58", "https://rpc-mumbai.maticvigil.com"),
+            provider: () => new HDWalletProvider("", "https://matic-mumbai.chainstacklabs.com"),
+            network_id: 80001,
+            confirmations: 2,
+            timeoutBlocks: 200,
+            skipDryRun: true
+        },
     }
 }
