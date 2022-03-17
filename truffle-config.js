@@ -32,7 +32,7 @@ module.exports = {
         },
         maticTest: {
             // provider: () => new HDWalletProvider("0xeaaaad222fd6ddbe5ac1034493937108f17766eaf5c8663335b73840ee864b58", "https://rpc-mumbai.maticvigil.com"),
-            provider: () => new HDWalletProvider("", "https://matic-mumbai.chainstacklabs.com"),
+            provider: () => new HDWalletProvider("0xeaaaad222fd6ddbe5ac1034493937108f17766eaf5c8663335b73840ee864b58", "https://matic-mumbai.chainstacklabs.com"),
             network_id: 80001,
             confirmations: 2,
             timeoutBlocks: 200,

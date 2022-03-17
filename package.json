@@ -21,9 +21,10 @@
     "node-fetch": "^2.6.1",
     "openzeppelin-solidity": "3.3.0",
     "solhint": "^2.0.0",
-    "truffle": "5.3.5",
-    "truffle-flattener": "1.5.0",
+    "truffle": "5.5.4",
+    "truffle-flattener": "1.6.0",
     "truffle-privatekey-provider": "^1.5.0",
-    "web3": "1.2.6"
+    "web3": "1.7.1",
+    "web3-eth": "^1.7.1"
   }
 }
