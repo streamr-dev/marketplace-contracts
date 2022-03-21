@@ -6,21 +6,25 @@
     "clean": "rm -rf build/ && mkdir -p build/contracts",
     "build": "truffle compile && ./flatten",
     "deploy": "truffle migrate",
-    "lint": "./node_modules/.bin/eslint src test && ./node_modules/.bin/solhint contracts/**/*.sol",
+    "lint": "eslint src test && solhint contracts/**/*.sol",
     "test": "npm run clean && truffle compile && truffle test"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
+    "@streamr/config": "^0.0.3",
+    "@truffle/hdwallet-provider": "^2.0.4",
+    "@uniswap/v2-core": "^1.0.1",
+    "@uniswap/v2-periphery": "^1.1.0-beta.0",
     "eslint": "^7.28.0",
-    "mocha": "^9.0.0",
+    "mocha": "^9.2.2",
     "node-fetch": "^2.6.1",
     "openzeppelin-solidity": "3.3.0",
-    "solhint": "^2.0.0",
+    "solhint": "^3.3.7",
     "truffle": "5.3.5",
-    "truffle-flattener": "1.5.0",
-    "web3": "1.2.6",
-    "@uniswap/v2-core": "^1.0.1",
-    "@uniswap/v2-periphery": "^1.1.0-beta.0"
+    "truffle-flattener": "1.6.0",
+    "truffle-privatekey-provider": "^1.5.0",
+    "web3": "1.7.1",
+    "web3-eth": "^1.7.1"
   }
 }
