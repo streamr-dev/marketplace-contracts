@@ -74,6 +74,7 @@ contract Uniswap2Adapter {
      */
     function _buyWithUniswap(bytes32 productId, uint minSubscriptionSeconds, uint timeWindow, uint pricePerSecondData, uint amount, address from_token) internal{
         if(from_token == address(datacoin)) {
+            require(datacoin.approve(address(marketplace), amount), "approval failed");
             marketplace.buyFor(productId, amount.div(pricePerSecondData), msg.sender);
             return;
         }

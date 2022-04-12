@@ -90,6 +90,9 @@ contract('Uniswap2Adapter', (accounts) => {
         await fromToken.mint(buyer, w3.utils.toWei('100000000'), {
             from: creator
         })
+        await dataToken.mint(buyer, w3.utils.toWei('100000000'), {
+            from: creator
+        })
         marketPrev = await MarketplacePrev.new(dataToken.address, currencyUpdateAgent, {
             from: creator
         })
@@ -102,6 +105,7 @@ contract('Uniswap2Adapter', (accounts) => {
         await market.createProduct(productId, 'testproduct', streamOwner, w3.utils.toWei('.001'), Currency.DATA, 1, {
             from: streamOwner
         })
+        // add liquidity to uniswap
         const dtAmount = w3.utils.toWei('10')
         const ftAmount = w3.utils.toWei('100')
         assert(await fromToken.approve(uniswapRouter.options.address, ftAmount, {
@@ -173,6 +177,24 @@ contract('Uniswap2Adapter', (accounts) => {
                 from: buyer
             })
             await uniswap2Adapter.buyWithERC20(productId, 9, day, fromToken.address, value, {
+                from: buyer
+            })
+            const subAfter = await market.getSubscription(productId, buyer, {
+                from: buyer
+            })
+            assert(subAfter.isValid)
+            assert(subAfter.endTimestamp - subBefore.endTimestamp > 10 - testToleranceSeconds)
+        })
+
+        it('can buy product with DataToken', async () => {
+            const subBefore = await market.getSubscription(productId, buyer, {
+                from: buyer
+            })
+            const value = w3.utils.toWei('0.1')
+            await dataToken.approve(uniswap2Adapter.address, value, {
+                from: buyer
+            })
+            await uniswap2Adapter.buyWithERC20(productId, 9, day, dataToken.address, value, {
                 from: buyer
             })
             const subAfter = await market.getSubscription(productId, buyer, {
