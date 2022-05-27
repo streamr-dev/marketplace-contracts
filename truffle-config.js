@@ -25,8 +25,16 @@ module.exports = {
         },
         polygonMainnet: {
             network_id: 137,
-            provider: () => new HDWalletProvider(process.env.POLYGON_PK || '0x5e98cce00cff5dea6b454889f359a4ec06b9fa6b88e9d69b86de8e1c81887da0', 'http://polygon-rpc.com'),
+            provider: () => new HDWalletProvider(process.env.KEY || '0x5e98cce00cff5dea6b454889f359a4ec06b9fa6b88e9d69b86de8e1c81887da0', 'http://polygon-rpc.com'),
             host: 'polygon-rpc.com',
+            confirmations: 2,
+            timeoutBlocks: 200,
+            skipDryRun: true
+        },
+        gnosisMainnet: {
+            network_id: 100,
+            provider: () => new HDWalletProvider(process.env.KEY || '0x5e98cce00cff5dea6b454889f359a4ec06b9fa6b88e9d69b86de8e1c81887da0', 'https://rpc.gnosischain.com'),
+            host: 'rpc.gnosischain.com',
             confirmations: 2,
             timeoutBlocks: 200,
             skipDryRun: true
