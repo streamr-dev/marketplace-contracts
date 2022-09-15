@@ -29,7 +29,7 @@
     "truffle": "5.3.5",
     "truffle-flattener": "1.6.0",
     "truffle-privatekey-provider": "^1.5.0",
-    "web3": "1.7.1",
+    "web3": "1.8.0",
     "web3-eth": "^1.7.1"
   }
 }
